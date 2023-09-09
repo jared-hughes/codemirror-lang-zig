@@ -1,12 +1,14 @@
 @top Root {
-  container_doc_comment?
+  ContainerDocComment?
   ContainerMembers
   eof
 }
 
 @skip {
-  space | line_comment
+  space | LineComment
 }
+
+@detectDelim
 
 @precedence {
   // stmt-level
@@ -47,60 +49,60 @@
 
 // *** Top level ***
 ContainerMembers {
-  ContainerDeclarations (ContainerField COMMA)* (ContainerField | ContainerDeclarations)
+  ContainerDeclarations (ContainerField ',')* (ContainerField | ContainerDeclarations)
 }
 
 ContainerDeclarations {
   TestDecl ContainerDeclarations
   | ComptimeDecl ContainerDeclarations
-  | doc_comment? KEYWORD_pub? Decl ContainerDeclarations
+  | DocComment? kw<'pub'>? Decl ContainerDeclarations
 }
 TestDecl {
-  KEYWORD_test (STRINGLITERALSINGLE | IDENTIFIER)? Block
+  kw<'test'> (stringLiteralSingle | Identifier)? Block
 }
 ComptimeDecl {
-  KEYWORD_comptime Block
+  kw<'comptime'> Block
 }
 
 Decl {
-  (KEYWORD_export | KEYWORD_extern STRINGLITERALSINGLE? | (KEYWORD_inline | KEYWORD_noinline))? FnProto (SEMICOLON | Block)
-  | (KEYWORD_export | KEYWORD_extern STRINGLITERALSINGLE?)? KEYWORD_threadlocal? VarDecl
-  | KEYWORD_usingnamespace Expr SEMICOLON
+  (kw<'export'> | kw<'extern'> stringLiteralSingle? | (kw<'inline'> | kw<'noinline'>))? FnProto (';' | Block)
+  | (kw<'export'> | kw<'extern'> stringLiteralSingle?)? kw<'threadlocal'>? VarDecl
+  | kw<'usingnamespace'> Expr ';'
 }
 
 FnProto {
-  KEYWORD_fn IDENTIFIER? LPAREN ParamDeclList RPAREN ByteAlign? AddrSpace? LinkSection? CallConv? EXCLAMATIONMARK? TypeExpr
+  kw<'fn'> Identifier? '(' ParamDeclList ')' ByteAlign? AddrSpace? LinkSection? CallConv? '!'? TypeExpr
 }
 
 VarDecl {
-  (KEYWORD_const | KEYWORD_var) IDENTIFIER (COLON TypeExpr)? ByteAlign? AddrSpace? LinkSection? (EQUAL Expr)? SEMICOLON
+  (kw<'const'> | kw<'var'>) Identifier (':' TypeExpr)? ByteAlign? AddrSpace? LinkSection? ('=' Expr)? ';'
 }
 
 ContainerField {
-  doc_comment? KEYWORD_comptime? (
-    IDENTIFIER COLON TypeExpr
-    | IDENTIFIER
+  DocComment? kw<'comptime'>? (
+    Identifier ':' TypeExpr
+    | Identifier
     | !before_typeexpr TypeExpr
-  ) !after_typeexpr ByteAlign? (EQUAL Expr)?
+  ) !after_typeexpr ByteAlign? ('=' Expr)?
 }
 
 // *** Block Level ***
 Statement {
-  KEYWORD_comptime? VarDecl
-  | KEYWORD_comptime BlockExprStatement
-  | KEYWORD_nosuspend BlockExprStatement
-  | KEYWORD_suspend BlockExprStatement
-  | KEYWORD_defer BlockExprStatement
-  | KEYWORD_errdefer Payload? BlockExprStatement
+  kw<'comptime'>? VarDecl
+  | kw<'comptime'> BlockExprStatement
+  | kw<'nosuspend'> BlockExprStatement
+  | kw<'suspend'> BlockExprStatement
+  | kw<'defer'> BlockExprStatement
+  | kw<'errdefer'> Payload? BlockExprStatement
   | IfStatement
   | LabeledStatement
   | SwitchExpr
-  | AssignExpr SEMICOLON
+  | AssignExpr ';'
 }
 
 IfStatement {
   IfPrefix BlockExpr
-  | IfPrefix AssignExpr ( SEMICOLON | KEYWORD_else Payload? Statement )
+  | IfPrefix AssignExpr ( ';' | kw<'else'> Payload? Statement )
 }
 
 LabeledStatement {
@@ -110,22 +112,22 @@ LabeledStatement {
 }
 
 LoopStatement {
-  KEYWORD_inline? (ForStatement | WhileStatement)
+  kw<'inline'>? (ForStatement | WhileStatement)
 }
 
 ForStatement {
   ForPrefix BlockExpr
-  | ForPrefix AssignExpr ( SEMICOLON | KEYWORD_else Statement )
+  | ForPrefix AssignExpr ( ';' | kw<'else'> Statement )
 }
 
 WhileStatement {
   WhilePrefix BlockExpr
-  | WhilePrefix AssignExpr ( SEMICOLON | KEYWORD_else Payload? Statement )
+  | WhilePrefix AssignExpr ( ';' | kw<'else'> Payload? Statement )
 }
 
 BlockExprStatement {
   BlockExpr
-  | Expr !finish_stmt SEMICOLON
+  | Expr !finish_stmt ';'
 }
 
 BlockExpr {
@@ -138,8 +140,8 @@ AssignExpr {
 }
 
 Expr {
-  BoolOrExpr { Expr !bool_or KEYWORD_or Expr } |
-  BoolAndExpr { Expr !bool_and KEYWORD_and Expr } |
+  BoolOrExpr { Expr !bool_or kw<'or'> Expr } |
+  BoolAndExpr { Expr !bool_and kw<'and'> Expr } |
   CompareExpr { Expr !compare CompareOp Expr } |
   BitwiseExpr { Expr !bitwise BitwiseOp Expr } |
   BitShiftExpr { Expr !bitshift BitShiftOp Expr } |
@@ -152,12 +154,12 @@ Expr {
 PrimaryExpr {
   AsmExpr
   | IfExpr
-  | KEYWORD_break (!before_break_label BreakLabel)? !after_break_label Expr?
-  | KEYWORD_comptime !useop Expr
-  | KEYWORD_nosuspend Expr
-  | KEYWORD_continue (!before_break_label BreakLabel)? !after_break_label
-  | KEYWORD_resume Expr
-  | KEYWORD_return Expr?
+  | kw<'break'> (!before_break_label BreakLabel)? !after_break_label Expr?
+  | kw<'comptime'> !useop Expr
+  | kw<'nosuspend'> Expr
+  | kw<'continue'> (!before_break_label BreakLabel)? !after_break_label
+  | kw<'resume'> Expr
+  | kw<'return'> Expr?
   | BlockLabel? LoopExpr
   | Block
   // TODO:
@@ -165,77 +167,77 @@ PrimaryExpr {
 }
 
 IfExpr {
-  IfPrefix Expr (!before_else KEYWORD_else Payload? Expr)? !after_else
+  IfPrefix Expr (!before_else kw<'else'> Payload? Expr)? !after_else
 }
 
 Block {
-  LBRACE Statement* RBRACE
+  '{' Statement* '}'
 }
 
 LoopExpr {
-  KEYWORD_inline (ForExpr | WhileExpr) !inline_loop
+  kw<'inline'> (ForExpr | WhileExpr) !inline_loop
   | (ForExpr | WhileExpr) !outline_loop
 }
 
 ForExpr {
-  ForPrefix Expr (!before_else KEYWORD_else Expr)? !after_else
+  ForPrefix Expr (!before_else kw<'else'> Expr)? !after_else
 }
 
 WhileExpr {
-  WhilePrefix Expr (!before_else KEYWORD_else Payload? Expr)? !after_else
+  WhilePrefix Expr (!before_else kw<'else'> Payload? Expr)? !after_else
 }
 
 InitList {
-  LBRACE FieldInit (COMMA FieldInit)* COMMA? RBRACE
-  | LBRACE Expr (COMMA Expr)* COMMA? RBRACE
-  | LBRACE RBRACE
+  '{' FieldInit (',' FieldInit)* ','? '}'
+  | '{' Expr (',' Expr)* ','? '}'
+  | '{' '}'
 }
 
 TypeExpr {
-  PrefixTypeOp* SuffixExpr (!before_assert EXCLAMATIONMARK TypeExpr)? !after_assert
+  PrefixTypeOp* SuffixExpr (!before_assert '!' TypeExpr)? !after_assert
 }
 
 SuffixExpr {
-  KEYWORD_async PrimaryTypeExpr SuffixOp* FnCallArguments
+  kw<'async'> PrimaryTypeExpr SuffixOp* FnCallArguments
   | PrimaryTypeExpr (!before_suffix SuffixOp | FnCallArguments)* !after_suffix
 }
 
 PrimaryTypeExpr {
-  BUILTINIDENTIFIER FnCallArguments
-  | CHAR_LITERAL
+  BuiltinIdentifier FnCallArguments
+  | CharLiteral
   | ContainerDecl
-  | DOT IDENTIFIER
-  | DOT InitList
+  | '.' Identifier
+  | '.' InitList
   | ErrorSetDecl
-  | FLOAT
+  | Float
   | FnProto
   | GroupedExpr
   | LabeledTypeExpr
-  | IDENTIFIER
+  | Identifier
   | IfTypeExpr
-  | INTEGER
-  | !comptime_typeexpr KEYWORD_comptime TypeExpr
-  | KEYWORD_error DOT IDENTIFIER
-  | KEYWORD_anyframe
-  | KEYWORD_unreachable
-  | STRINGLITERAL
+  | Integer
+  | !comptime_typeexpr kw<'comptime'> TypeExpr
+  | kw<'error'> '.' Identifier
+  | kw<'anyframe'>
+  | kw<'unreachable'>
+  | StringLiteral
   | SwitchExpr
 }
 
 ContainerDecl {
-  (KEYWORD_extern | KEYWORD_packed)? ContainerDeclAuto
+  (kw<'extern'> | kw<'packed'>)? ContainerDeclAuto
 }
 
 ErrorSetDecl {
-  KEYWORD_error LBRACE IdentifierList RBRACE
+  kw<'error'> '{' IdentifierList '}'
 }
 
 GroupedExpr {
-  LPAREN Expr RPAREN
+  '(' Expr ')'
 }
 
 IfTypeExpr {
-  IfPrefix TypeExpr (!before_else KEYWORD_else Payload? TypeExpr)? !after_else
+  IfPrefix TypeExpr (!before_else kw<'else'> Payload? TypeExpr)? !after_else
 }
 
 LabeledTypeExpr {
@@ -244,278 +246,278 @@ LabeledTypeExpr {
 }
 
 LoopTypeExpr {
-  KEYWORD_inline? (ForTypeExpr | WhileTypeExpr)
+  kw<'inline'>? (ForTypeExpr | WhileTypeExpr)
 }
 
 ForTypeExpr {
-  ForPrefix TypeExpr (!before_else KEYWORD_else TypeExpr)? !after_else
+  ForPrefix TypeExpr (!before_else kw<'else'> TypeExpr)? !after_else
 }
 
 WhileTypeExpr {
-  WhilePrefix TypeExpr (!before_else KEYWORD_else Payload? TypeExpr)? !after_else
+  WhilePrefix TypeExpr (!before_else kw<'else'> Payload? TypeExpr)? !after_else
 }
 
 SwitchExpr {
-  KEYWORD_switch LPAREN Expr RPAREN LBRACE SwitchProngList RBRACE
+  kw<'switch'> '(' Expr ')' '{' SwitchProngList '}'
 }
 
 // *** Assembly ***
 AsmExpr {
-  KEYWORD_asm KEYWORD_volatile? LPAREN Expr AsmOutput? RPAREN
+  kw<'asm'> kw<'volatile'>? '(' Expr AsmOutput? ')'
 }
 
 AsmOutput {
-  COLON AsmOutputList AsmInput?
+  ':' AsmOutputList AsmInput?
 }
 
 AsmOutputItem {
-  LBRACKET IDENTIFIER RBRACKET STRINGLITERAL LPAREN (MINUSRARROW TypeExpr | IDENTIFIER) RPAREN
+  '[' Identifier ']' StringLiteral '(' ('->' TypeExpr | Identifier) ')'
 }
 
 AsmInput {
-  COLON AsmInputList AsmClobbers?
+  ':' AsmInputList AsmClobbers?
 }
 
 AsmInputItem {
-  LBRACKET IDENTIFIER RBRACKET STRINGLITERAL LPAREN Expr RPAREN
+  '[' Identifier ']' StringLiteral '(' Expr ')'
 }
 
 AsmClobbers {
-  COLON StringList
+  ':' StringList
 }
 
 // *** Helper grammar ***
 BreakLabel {
-  COLON IDENTIFIER
+  ':' Identifier
 }
 
 BlockLabel {
-  IDENTIFIER COLON
+  Identifier ':'
 }
 
 FieldInit {
-  DOT IDENTIFIER EQUAL Expr
+  '.' Identifier '=' Expr
 }
 
 WhileContinueExpr {
-  COLON LPAREN AssignExpr RPAREN
+  ':' '(' AssignExpr ')'
 }
 
 LinkSection {
-  KEYWORD_linksection LPAREN Expr RPAREN
+  kw<'linksection'> '(' Expr ')'
 }
 
 AddrSpace {
-  KEYWORD_addrspace LPAREN Expr RPAREN
+  kw<'addrspace'> '(' Expr ')'
 }
 
 // Fn specific
 CallConv {
-  KEYWORD_callconv LPAREN Expr RPAREN
+  kw<'callconv'> '(' Expr ')'
 }
 
 ParamDecl {
-  doc_comment? (
-    KEYWORD_noalias
-    | !comptime_paramdecl KEYWORD_comptime
-  )? (IDENTIFIER COLON)? ParamType
-  | DOT3
+  DocComment? (
+    kw<'noalias'>
+    | !comptime_paramdecl kw<'comptime'>
+  )? (Identifier ':')? ParamType
+  | '...'
 }
 
 ParamType {
-  KEYWORD_anytype
+  kw<'anytype'>
   | TypeExpr
 }
 
 // Control flow prefixes
 IfPrefix {
-  KEYWORD_if LPAREN Expr RPAREN PtrPayload?
+  kw<'if'> '(' Expr ')' PtrPayload?
 }
 
 WhilePrefix {
-  KEYWORD_while LPAREN Expr RPAREN PtrPayload? WhileContinueExpr?
+  kw<'while'> '(' Expr ')' PtrPayload? WhileContinueExpr?
 }
 
 ForPrefix {
-  KEYWORD_for LPAREN ForArgumentsList RPAREN PtrListPayload
+  kw<'for'> '(' ForArgumentsList ')' PtrListPayload
 }
 
 // Payloads
 Payload {
-  PIPE IDENTIFIER PIPE
+  '|' Identifier '|'
 }
 
 PtrPayload {
-  PIPE ASTERISK? IDENTIFIER PIPE
+  '|' '*'? Identifier '|'
 }
 
 PtrIndexPayload {
-  PIPE ASTERISK? IDENTIFIER (COMMA IDENTIFIER)? PIPE
+  '|' '*'? Identifier (',' Identifier)? '|'
 }
 
 PtrListPayload {
-  PIPE ASTERISK? IDENTIFIER (COMMA ASTERISK? IDENTIFIER)* COMMA? PIPE
+  '|' '*'? Identifier (',' '*'? Identifier)* ','? '|'
 }
 
 // Switch specific
 SwitchProng {
-  KEYWORD_inline? SwitchCase EQUALRARROW PtrIndexPayload? AssignExpr
+  kw<'inline'>? SwitchCase '=>' PtrIndexPayload? AssignExpr
 }
 
 SwitchCase {
-  SwitchItem (COMMA SwitchItem)* COMMA?
-  | KEYWORD_else
+  SwitchItem (',' SwitchItem)* ','?
+  | kw<'else'>
 }
 
 SwitchItem {
-  Expr (DOT3 Expr)?
+  Expr ('...' Expr)?
 }
 
 // For specific
 ForArgumentsList {
-  ForItem (COMMA ForItem)* COMMA?
+  ForItem (',' ForItem)* ','?
 }
 
 ForItem {
-  Expr (DOT2 Expr?)?
+  Expr ('..' Expr?)?
 }
 
 // Operators
 AssignOp {
-  ASTERISKEQUAL
-  | ASTERISKPIPEEQUAL
-  | SLASHEQUAL
-  | PERCENTEQUAL
-  | PLUSEQUAL
-  | PLUSPIPEEQUAL
-  | MINUSEQUAL
-  | MINUSPIPEEQUAL
-  | LARROW2EQUAL
-  | LARROW2PIPEEQUAL
-  | RARROW2EQUAL
-  | AMPERSANDEQUAL
-  | CARETEQUAL
-  | PIPEEQUAL
-  | ASTERISKPERCENTEQUAL
-  | PLUSPERCENTEQUAL
-  | MINUSPERCENTEQUAL
-  | EQUAL
+  '*='
+  | '*|='
+  | '/='
+  | '%='
+  | '+='
+  | '+|='
+  | '-='
+  | '-|='
+  | '<<='
+  | '<<|='
+  | '>>='
+  | '&='
+  | '^='
+  | '|='
+  | '*%='
+  | '+%='
+  | '-%='
+  | '='
 }
 
 CompareOp {
-  EQUALEQUAL
-  | EXCLAMATIONMARKEQUAL
-  | LARROW
-  | RARROW
-  | LARROWEQUAL
-  | RARROWEQUAL
+  '=='
+  | '!='
+  | '<'
+  | '>'
+  | '<='
+  | '>='
 }
 
 BitwiseOp {
-  AMPERSAND
-  | CARET
-  | PIPE
-  | KEYWORD_orelse
-  | KEYWORD_catch Payload?
+  '&'
+  | '^'
+  | '|'
+  | kw<'orelse'>
+  | kw<'catch'> Payload?
 }
 
 BitShiftOp {
-  LARROW2
-  | RARROW2
-  | LARROW2PIPE
+  '<<'
+  | '>>'
+  | '<<|'
 }
 
 AdditionOp {
-  PLUS
-  | MINUS
-  | PLUS2
-  | PLUSPERCENT
-  | MINUSPERCENT
-  | PLUSPIPE
-  | MINUSPIPE
+  '+'
+  | '-'
+  | '++'
+  | '+%'
+  | '-%'
+  | '+|'
+  | '-|'
 }
 
 MultiplyOp {
-  PIPE2
-  | ASTERISK
-  | SLASH
-  | PERCENT
-  | ASTERISK2
-  | ASTERISKPERCENT
-  | ASTERISKPIPE
+  '||'
+  | '*'
+  | '/'
+  | '%'
+  | '**'
+  | '*%'
+  | '*|'
 }
 
 PrefixOp {
-  EXCLAMATIONMARK
-  | MINUS
-  | TILDE
-  | MINUSPERCENT
-  | AMPERSAND
-  | KEYWORD_try
-  | KEYWORD_await
+  '!'
+  | '-'
+  | '~'
+  | '-%'
+  | '&'
+  | kw<'try'>
+  | kw<'await'>
 }
 
 PrefixTypeOp {
-  QUESTIONMARK
-  | KEYWORD_anyframe MINUSRARROW
-  | SliceTypeStart (ByteAlign | AddrSpace | KEYWORD_const | KEYWORD_volatile | KEYWORD_allowzero)*
-  | PtrTypeStart (AddrSpace | KEYWORD_align LPAREN Expr (COLON Expr COLON Expr)? RPAREN | KEYWORD_const | KEYWORD_volatile | KEYWORD_allowzero)*
+  '?'
+  | kw<'anyframe'> '->'
+  | SliceTypeStart (ByteAlign | AddrSpace | kw<'const'> | kw<'volatile'> | kw<'allowzero'>)*
+  | PtrTypeStart (AddrSpace | kw<'align'> '(' Expr (':' Expr ':' Expr)? ')' | kw<'const'> | kw<'volatile'> | kw<'allowzero'>)*
   | ArrayTypeStart
 }
 
 SuffixOp {
-  LBRACKET Expr (DOT2 (Expr? (COLON Expr)?)?)? RBRACKET
-  | DOT IDENTIFIER
-  | DOTASTERISK
-  | DOTQUESTIONMARK
+  '[' Expr ('..' (Expr? (':' Expr)?)?)? ']'
+  | '.' Identifier
+  | '.*'
+  | '.?'
 }
 
 FnCallArguments {
-  LPAREN ExprList RPAREN
+  '(' ExprList ')'
 }
 
 //  Ptr specific
 SliceTypeStart {
-  LBRACKET (COLON Expr)? RBRACKET
+  '[' (':' Expr)? ']'
 }
 
 PtrTypeStart {
-  ASTERISK
-  | ASTERISK2
-  | LBRACKET ASTERISK (LETTERC | COLON Expr)? RBRACKET
+  '*'
+  | '**'
+  | '[' '*' ('c' | ':' Expr)? ']'
 }
 
 ArrayTypeStart {
-  LBRACKET Expr (COLON Expr)? RBRACKET
+  '[' Expr (':' Expr)? ']'
 }
 
 // ContainerDecl specific
 ContainerDeclAuto {
-  ContainerDeclType LBRACE container_doc_comment? ContainerMembers RBRACE
+  ContainerDeclType '{' ContainerDocComment? ContainerMembers '}'
 }
 
 ContainerDeclType {
-  KEYWORD_struct (LPAREN Expr RPAREN)?
-  | KEYWORD_opaque
-  | KEYWORD_enum (LPAREN Expr RPAREN)?
-  | KEYWORD_union (LPAREN (KEYWORD_enum (LPAREN Expr RPAREN)? | Expr) RPAREN)?
+  kw<'struct'> ('(' Expr ')')?
+  | kw<'opaque'>
+  | kw<'enum'> ('(' Expr ')')?
+  | kw<'union'> ('(' (kw<'enum'> ('(' Expr ')')? | Expr) ')')?
 }
 
 // Alignment
 ByteAlign {
-  KEYWORD_align LPAREN Expr RPAREN
+  kw<'align'> '(' Expr ')'
 }
 
 // Lists
-IdentifierList { commaSep<doc_comment? IDENTIFIER> }
+IdentifierList { commaSep<DocComment? Identifier> }
 SwitchProngList { commaSep<SwitchProng> }
 AsmOutputList { commaSep<AsmOutputItem> }
 AsmInputList { commaSep<AsmInputItem> }
-StringList { commaSep<STRINGLITERAL> }
+StringList { commaSep<StringLiteral> }
 ParamDeclList { commaSep<ParamDecl> }
 ExprList { commaSep<Expr> }
 
-commaSep<e> { "" | e (COMMA e)* }
+commaSep<e> { "" | e (',' e)* }
 
 @tokens {
   eof { @eof }
@@ -581,218 +583,118 @@ commaSep<e> { "" | e (COMMA e)* }
   }
 
   @precedence {
-    doc_comment, container_doc_comment,
-    line_comment,
-    SLASH
+    DocComment, ContainerDocComment,
+    LineComment,
+    '/'
   }
 
-  container_doc_comment { ('//!' ![\n]* ![ \n]*)+ }
-  doc_comment { ('///' ![\n]* $[ \n]*)+ }
-  line_comment { '//' ![\n]* | '////' ![\n]* }
-  line_string { ("\\\\" ![\n]* $[ \n]*)+ }
+  ContainerDocComment { ('//!' ![\n]* ![ \n]*)+ }
+  DocComment { ('///' ![\n]* $[ \n]*)+ }
+  LineComment { '//' ![\n]* | '////' ![\n]* }
+  LineString { ("\\\\" ![\n]* $[ \n]*)+ }
   space { $[ \n] }
 
-  CHAR_LITERAL { "'" char_char "'" }
+  CharLiteral { "'" char_char "'" }
   @precedence {
-    FLOAT,
-    INTEGER
+    Float,
+    Integer
   }
-  FLOAT {
+  Float {
     "0x" hex_int "." hex_int ($[pP] $[-+]? dec_int)?
     |      dec_int "." dec_int ($[eE] $[-+]? dec_int)?
     | "0x" hex_int $[pP] $[-+]? dec_int
     |      dec_int $[eE] $[-+]? dec_int
   }
-  INTEGER {
+  Integer {
     "0b" bin_int
     | "0o" oct_int
     | "0x" hex_int
     |      dec_int
   }
-  STRINGLITERALSINGLE { "\"" string_char* "\"" }
-  STRINGLITERAL {
-    STRINGLITERALSINGLE
-      | (line_string   )+
+  stringLiteralSingle { "\"" string_char* "\"" }
+  StringLiteral {
+    stringLiteralSingle
+      | (LineString   )+
   }
-  IDENTIFIER {
+  Identifier {
     $[A-Za-z_] $[A-Za-z0-9_]*
-    | "@" STRINGLITERALSINGLE
+    | "@" stringLiteralSingle
   }
-  BUILTINIDENTIFIER { "@" $[A-Za-z_] $[A-Za-z0-9_]* }
+  BuiltinIdentifier { "@" $[A-Za-z_] $[A-Za-z0-9_]* }
 
   @precedence {
-    AMPERSANDEQUAL,
-    AMPERSAND
+    '&=',
+    '&'
   }
-  AMPERSAND            { '&'   }
-  AMPERSANDEQUAL       { '&='  }
+  '&' '&='
   @precedence {
-    ASTERISKPERCENTEQUAL, ASTERISKPIPEEQUAL,
-    ASTERISKPERCENT, ASTERISKPIPE, ASTERISKEQUAL, ASTERISK2,
-    ASTERISK
+    '*%=', '*|=',
+    '*%', '*|', '*=', '**',
+    '*'
   }
-  ASTERISK             { '*'   }
-  ASTERISK2            { '**'  }
-  ASTERISKEQUAL        { '*='  }
-  ASTERISKPERCENT      { '*%'  }
-  ASTERISKPERCENTEQUAL { '*%=' }
-  ASTERISKPIPE         { '*|'  }
-  ASTERISKPIPEEQUAL    { '*|=' }
+  '*' '**' '*=' '*%' '*%=' '*|' '*|='
   @precedence {
-    CARETEQUAL,
-    CARET
+    '^=',
+    '^'
   }
-  CARET                { '^'   }
-  CARETEQUAL           { '^='  }
-  COLON                { ':'   }
-  COMMA                { ','   }
+  '^' '^=' ':' ','
   @precedence {
-    DOT3,
-    DOT2, DOTASTERISK, DOTQUESTIONMARK,
-    DOT
+    '...',
+    '..', '.*', '.?',
+    '.'
   }
-  DOT                  { '.'   }
-  DOT2                 { '..'  }
-  DOT3                 { '...' }
-  DOTASTERISK          { '.*'  }
-  DOTQUESTIONMARK      { '.?'  }
+  '.' '..' '...' '.*' '.?'
   @precedence {
-    EQUALEQUAL, EQUALRARROW,
-    EQUAL
+    '==', '=>',
+    '='
   }
-  EQUAL                { '='   }
-  EQUALEQUAL           { '=='  }
-  EQUALRARROW          { '=>'  }
+  '=' '==' '=>'
   @precedence {
-    EXCLAMATIONMARKEQUAL,
-    EXCLAMATIONMARK
+    '!=',
+    '!'
   }
-  EXCLAMATIONMARK      { '!'   }
-  EXCLAMATIONMARKEQUAL { '!='  }
+  '!' '!='
   @precedence {
-    LARROW2PIPEEQUAL,
-    LARROW2EQUAL, LARROW2PIPE,
-    LARROW2, LARROWEQUAL,
-    LARROW
+    '<<|=',
+    '<<=', '<<|',
+    '<<', '<=',
+    '<'
   }
-  LARROW               { '<'   }
-  LARROW2              { '<<'  }
-  LARROW2EQUAL         { '<<=' }
-  LARROW2PIPE          { '<<|' }
-  LARROW2PIPEEQUAL     { '<<|=' }
-  LARROWEQUAL          { '<='  }
-  LBRACE               { '{'   }
-  LBRACKET             { '['   }
-  LPAREN               { '('   }
+  '<' '<<' '<<=' '<<|' '<<|=' '<=' '{' '['   
+  '('   
   @precedence {
-    MINUSPERCENTEQUAL, MINUSPIPEEQUAL
-    MINUSEQUAL, MINUSPERCENT, MINUSRARROW, MINUSPIPE,
-    MINUS
+    '-%=', '-|='
+    '-=', '-%', '->', '-|',
+    '-'
   }
-  MINUS                { '-'   }
-  MINUSEQUAL           { '-='  }
-  MINUSPERCENT         { '-%'  }
-  MINUSPERCENTEQUAL    { '-%=' }
-  MINUSPIPE            { '-|'  }
-  MINUSPIPEEQUAL       { '-|=' }
-  MINUSRARROW          { '->'  }
+  '-' '-=' '-%' '-%=' '-|' '-|=' '->'  
   @precedence {
-    PERCENTEQUAL,
-    PERCENT
+    '%=',
+    '%'
   }
-  PERCENT              { '%'   }
-  PERCENTEQUAL         { '%='  }
+  '%' '%=' 
   @precedence {
-    PIPE2, PIPEEQUAL,
-    PIPE
+    '||', '|=',
+    '|'
   }
-  PIPE                 { '|'   }
-  PIPE2                { '||'  }
-  PIPEEQUAL            { '|='  }
+  '|' '||' '|='
   @precedence {
-    PLUSPERCENTEQUAL, PLUSPIPEEQUAL,
-    PLUS2, PLUSEQUAL, PLUSPERCENT, PLUSPIPE,
-    PLUS
+    '+%=', '+|=',
+    '++', '+=', '+%', '+|',
+    '+'
   }
-  PLUS                 { '+'   }
-  PLUS2                { '++'  }
-  PLUSEQUAL            { '+='  }
-  PLUSPERCENT          { '+%'  }
-  PLUSPERCENTEQUAL     { '+%=' }
-  PLUSPIPE             { '+|'  }
-  PLUSPIPEEQUAL        { '+|=' }
-  LETTERC              { 'c'   }
-  QUESTIONMARK         { '?'   }
+  '+' '++' '+=' '+%' '+%=' '+|' '+|=' 'c' '?'    
   @precedence {
-    RARROW2EQUAL,
-    RARROW2, RARROWEQUAL,
-    RARROW
+    '>>=',
+    '>>', '>=',
+    '>'
   }
-  RARROW               { '>'   }
-  RARROW2              { '>>'  }
-  RARROW2EQUAL         { '>>=' }
-  RARROWEQUAL          { '>='  }
-  RBRACE               { '}'   }
-  RBRACKET             { ']'   }
-  RPAREN               { ')'   }
-  SEMICOLON            { ';'   }
+  '>' '>>' '>>=' '>=' '}'  ']'  ')' ';'    
   @precedence {
-    SLASHEQUAL,
-    SLASH
+    '/=',
+    '/'
   }
-  SLASH                { '/'   }
-  SLASHEQUAL           { '/='  }
-  TILDE                { '~'   }
+  '/' '/=' '~'    
 }
 
-kw<word> { @specialize[@name={word}]<IDENTIFIER, word> }
-
-KEYWORD_addrspace   { kw<'addrspace'>   }
-KEYWORD_align       { kw<'align'>       }
-KEYWORD_allowzero   { kw<'allowzero'>   }
-KEYWORD_and         { kw<'and'>         }
-KEYWORD_anyframe    { kw<'anyframe'>    }
-KEYWORD_anytype     { kw<'anytype'>     }
-KEYWORD_asm         { kw<'asm'>         }
-KEYWORD_async       { kw<'async'>       }
-KEYWORD_await       { kw<'await'>       }
-KEYWORD_break       { kw<'break'>       }
-KEYWORD_callconv    { kw<'callconv'>    }
-KEYWORD_catch       { kw<'catch'>       }
-KEYWORD_comptime    { kw<'comptime'>    }
-KEYWORD_const       { kw<'const'>       }
-KEYWORD_continue    { kw<'continue'>    }
-KEYWORD_defer       { kw<'defer'>       }
-KEYWORD_else        { kw<'else'>        }
-KEYWORD_enum        { kw<'enum'>        }
-KEYWORD_errdefer    { kw<'errdefer'>    }
-KEYWORD_error       { kw<'error'>       }
-KEYWORD_export      { kw<'export'>      }
-KEYWORD_extern      { kw<'extern'>      }
-KEYWORD_fn          { kw<'fn'>          }
-KEYWORD_for         { kw<'for'>         }
-KEYWORD_if          { kw<'if'>          }
-KEYWORD_inline      { kw<'inline'>      }
-KEYWORD_noalias     { kw<'noalias'>     }
-KEYWORD_nosuspend   { kw<'nosuspend'>   }
-KEYWORD_noinline    { kw<'noinline'>    }
-KEYWORD_opaque      { kw<'opaque'>      }
-KEYWORD_or          { kw<'or'>          }
-KEYWORD_orelse      { kw<'orelse'>      }
-KEYWORD_packed      { kw<'packed'>      }
-KEYWORD_pub         { kw<'pub'>         }
-KEYWORD_resume      { kw<'resume'>      }
-KEYWORD_return      { kw<'return'>      }
-KEYWORD_linksection { kw<'linksection'> }
-KEYWORD_struct      { kw<'struct'>      }
-KEYWORD_suspend     { kw<'suspend'>     }
-KEYWORD_switch      { kw<'switch'>      }
-KEYWORD_test        { kw<'test'>        }
-KEYWORD_threadlocal { kw<'threadlocal'> }
-KEYWORD_try         { kw<'try'>         }
-KEYWORD_union       { kw<'union'>       }
-KEYWORD_unreachable { kw<'unreachable'> }
-KEYWORD_usingnamespace { kw<'usingnamespace'> }
-KEYWORD_var         { kw<'var'>         }
-KEYWORD_volatile    { kw<'volatile'>    }
-KEYWORD_while       { kw<'while'>       }
+kw<word> { @specialize[@name={word}]<Identifier, word> }
