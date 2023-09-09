@@ -1,8 +1,11 @@
 @top Root {
-  skip
   container_doc_comment?
   ContainerMembers
   eof
+}
+
+@skip {
+  space | line_comment
 }
 
 // *** Top level ***
@@ -50,10 +53,10 @@ Statement {
   | KEYWORD_suspend BlockExprStatement
   | KEYWORD_defer BlockExprStatement
   | KEYWORD_errdefer Payload? BlockExprStatement
-  | IfStatement
-  | LabeledStatement
-  | SwitchExpr
-  | AssignExpr SEMICOLON
+  // | IfStatement
+  // | LabeledStatement
+  // | SwitchExpr
+  // | AssignExpr SEMICOLON
 }
 
 IfStatement {
@@ -94,7 +97,8 @@ AssignExpr {
 }
 
 Expr {
-  BoolOrExpr
+  // BoolOrExpr
+  PrimaryExpr
 }
 
 BoolOrExpr {
@@ -131,20 +135,20 @@ PrefixExpr {
 
 PrimaryExpr {
   AsmExpr
-  | IfExpr
-  | KEYWORD_break BreakLabel? Expr?
+  // | IfExpr
+  // | KEYWORD_break BreakLabel? Expr?
   | KEYWORD_comptime Expr
   | KEYWORD_nosuspend Expr
-  | KEYWORD_continue BreakLabel?
+  // | KEYWORD_continue BreakLabel?
   | KEYWORD_resume Expr
   | KEYWORD_return Expr?
-  | BlockLabel? LoopExpr
-  | Block
-  | CurlySuffixExpr
+  // | BlockLabel? LoopExpr
+  // | Block
+  // | CurlySuffixExpr
 }
 
 IfExpr {
-  IfPrefix Expr (KEYWORD_else Payload? Expr)?
+  IfPrefix Expr !expr (KEYWORD_else Payload? Expr)?
 }
 
 Block {
@@ -178,7 +182,8 @@ TypeExpr {
 }
 
 ErrorUnionExpr {
-  SuffixExpr (EXCLAMATIONMARK TypeExpr)?
+  // SuffixExpr (EXCLAMATIONMARK TypeExpr)?
+  KEYWORD_async
 }
 
 SuffixExpr {
@@ -196,7 +201,7 @@ PrimaryTypeExpr {
   | FLOAT
   | FnProto
   | GroupedExpr
-  | LabeledTypeExpr
+  // | LabeledTypeExpr
   | IDENTIFIER
   | IfTypeExpr
   | INTEGER
@@ -581,225 +586,215 @@ ExprList {
     | $[^\\"\n]
   }
 
-  container_doc_comment { ('//!' ![\n]* ![ \n]* skip)+ }
-  doc_comment { ('///' ![\n]* $[ \n]* skip)+ }
+  @precedence {
+    doc_comment, container_doc_comment,
+    line_comment
+  }
+
+  container_doc_comment { ('//!' ![\n]* ![ \n]*)+ }
+  doc_comment { ('///' ![\n]* $[ \n]*)+ }
   // TODO There was a ![!/] that seems to be negative forward lookahead (by 2 bytes?) for a slash
   line_comment { '//' ![\n]* | '////' ![\n]* }
   line_string { ("\\\\" ![\n]* $[ \n]*)+ }
-  skip { ($[ \n] | line_comment)* }
+  space { $[ \n] }
 
-  CHAR_LITERAL { "'" char_char "'" skip }
+  CHAR_LITERAL { "'" char_char "'" }
   FLOAT {
-    "0x" hex_int "." hex_int ($[pP] $[-+]? dec_int)? skip
-      |      dec_int "." dec_int ($[eE] $[-+]? dec_int)? skip
-      | "0x" hex_int $[pP] $[-+]? dec_int skip
-      |      dec_int $[eE] $[-+]? dec_int skip
+    "0x" hex_int "." hex_int ($[pP] $[-+]? dec_int)?
+    |      dec_int "." dec_int ($[eE] $[-+]? dec_int)?
+    | "0x" hex_int $[pP] $[-+]? dec_int
+    |      dec_int $[eE] $[-+]? dec_int
   }
   INTEGER {
-    "0b" bin_int skip
-      | "0o" oct_int skip
-      | "0x" hex_int skip
-      |      dec_int   skip
+    "0b" bin_int
+    | "0o" oct_int
+    | "0x" hex_int
+    |      dec_int
   }
-  STRINGLITERALSINGLE { "\"" string_char* "\"" skip }
+  STRINGLITERALSINGLE { "\"" string_char* "\"" }
   STRINGLITERAL {
     STRINGLITERALSINGLE
-      | (line_string    skip)+
+      | (line_string   )+
   }
   IDENTIFIER {
-    $[A-Za-z_] $[A-Za-z0-9_]* skip
-      | "@" STRINGLITERALSINGLE
+    $[A-Za-z_] $[A-Za-z0-9_]*
+    | "@" STRINGLITERALSINGLE
   }
-  BUILTINIDENTIFIER { "@" $[A-Za-z_] $[A-Za-z0-9_]* skip }
+  BUILTINIDENTIFIER { "@" $[A-Za-z_] $[A-Za-z0-9_]* }
 
   @precedence {
     AMPERSANDEQUAL,
     AMPERSAND
   }
-  AMPERSAND            { '&'   skip }
-  AMPERSANDEQUAL       { '&='  skip }
+  AMPERSAND            { '&'   }
+  AMPERSANDEQUAL       { '&='  }
   @precedence {
     ASTERISKPERCENTEQUAL, ASTERISKPIPEEQUAL,
     ASTERISKPERCENT, ASTERISKPIPE, ASTERISKEQUAL, ASTERISK2,
     ASTERISK
   }
-  ASTERISK             { '*'   skip }
-  ASTERISK2            { '**'  skip }
-  ASTERISKEQUAL        { '*='  skip }
-  ASTERISKPERCENT      { '*%'  skip }
-  ASTERISKPERCENTEQUAL { '*%=' skip }
-  ASTERISKPIPE         { '*|'  skip }
-  ASTERISKPIPEEQUAL    { '*|=' skip }
+  ASTERISK             { '*'   }
+  ASTERISK2            { '**'  }
+  ASTERISKEQUAL        { '*='  }
+  ASTERISKPERCENT      { '*%'  }
+  ASTERISKPERCENTEQUAL { '*%=' }
+  ASTERISKPIPE         { '*|'  }
+  ASTERISKPIPEEQUAL    { '*|=' }
   @precedence {
     CARETEQUAL,
     CARET
   }
-  CARET                { '^'   skip }
-  CARETEQUAL           { '^='  skip }
-  COLON                { ':'   skip }
-  COMMA                { ','   skip }
+  CARET                { '^'   }
+  CARETEQUAL           { '^='  }
+  COLON                { ':'   }
+  COMMA                { ','   }
   @precedence {
     DOT3,
     DOT2, DOTASTERISK, DOTQUESTIONMARK,
     DOT
   }
-  DOT                  { '.'   skip }
-  DOT2                 { '..'  skip }
-  DOT3                 { '...' skip }
-  DOTASTERISK          { '.*'  skip }
-  DOTQUESTIONMARK      { '.?'  skip }
+  DOT                  { '.'   }
+  DOT2                 { '..'  }
+  DOT3                 { '...' }
+  DOTASTERISK          { '.*'  }
+  DOTQUESTIONMARK      { '.?'  }
   @precedence {
     EQUALEQUAL, EQUALRARROW,
     EQUAL
   }
-  EQUAL                { '='   skip }
-  EQUALEQUAL           { '=='  skip }
-  EQUALRARROW          { '=>'  skip }
+  EQUAL                { '='   }
+  EQUALEQUAL           { '=='  }
+  EQUALRARROW          { '=>'  }
   @precedence {
     EXCLAMATIONMARKEQUAL,
     EXCLAMATIONMARK
   }
-  EXCLAMATIONMARK      { '!'   skip }
-  EXCLAMATIONMARKEQUAL { '!='  skip }
+  EXCLAMATIONMARK      { '!'   }
+  EXCLAMATIONMARKEQUAL { '!='  }
   @precedence {
     LARROW2PIPEEQUAL,
     LARROW2EQUAL, LARROW2PIPE,
     LARROW2, LARROWEQUAL,
     LARROW
   }
-  LARROW               { '<'   skip }
-  LARROW2              { '<<'  skip }
-  LARROW2EQUAL         { '<<=' skip }
-  LARROW2PIPE          { '<<|' skip }
-  LARROW2PIPEEQUAL     { '<<|=' skip }
-  LARROWEQUAL          { '<='  skip }
-  LBRACE               { '{'   skip }
-  LBRACKET             { '['   skip }
-  LPAREN               { '('   skip }
+  LARROW               { '<'   }
+  LARROW2              { '<<'  }
+  LARROW2EQUAL         { '<<=' }
+  LARROW2PIPE          { '<<|' }
+  LARROW2PIPEEQUAL     { '<<|=' }
+  LARROWEQUAL          { '<='  }
+  LBRACE               { '{'   }
+  LBRACKET             { '['   }
+  LPAREN               { '('   }
   @precedence {
     MINUSPERCENTEQUAL, MINUSPIPEEQUAL
     MINUSEQUAL, MINUSPERCENT, MINUSRARROW, MINUSPIPE,
     MINUS
   }
-  MINUS                { '-'   skip }
-  MINUSEQUAL           { '-='  skip }
-  MINUSPERCENT         { '-%'  skip }
-  MINUSPERCENTEQUAL    { '-%=' skip }
-  MINUSPIPE            { '-|'  skip }
-  MINUSPIPEEQUAL       { '-|=' skip }
-  MINUSRARROW          { '->'  skip }
+  MINUS                { '-'   }
+  MINUSEQUAL           { '-='  }
+  MINUSPERCENT         { '-%'  }
+  MINUSPERCENTEQUAL    { '-%=' }
+  MINUSPIPE            { '-|'  }
+  MINUSPIPEEQUAL       { '-|=' }
+  MINUSRARROW          { '->'  }
   @precedence {
     PERCENTEQUAL,
     PERCENT
   }
-  PERCENT              { '%'   skip }
-  PERCENTEQUAL         { '%='  skip }
+  PERCENT              { '%'   }
+  PERCENTEQUAL         { '%='  }
   @precedence {
     PIPE2, PIPEEQUAL,
     PIPE
   }
-  PIPE                 { '|'   skip }
-  PIPE2                { '||'  skip }
-  PIPEEQUAL            { '|='  skip }
+  PIPE                 { '|'   }
+  PIPE2                { '||'  }
+  PIPEEQUAL            { '|='  }
   @precedence {
     PLUSPERCENTEQUAL, PLUSPIPEEQUAL,
     PLUS2, PLUSEQUAL, PLUSPERCENT, PLUSPIPE,
     PLUS
   }
-  PLUS                 { '+'   skip }
-  PLUS2                { '++'  skip }
-  PLUSEQUAL            { '+='  skip }
-  PLUSPERCENT          { '+%'  skip }
-  PLUSPERCENTEQUAL     { '+%=' skip }
-  PLUSPIPE             { '+|'  skip }
-  PLUSPIPEEQUAL        { '+|=' skip }
-  LETTERC              { 'c'   skip }
-  QUESTIONMARK         { '?'   skip }
+  PLUS                 { '+'   }
+  PLUS2                { '++'  }
+  PLUSEQUAL            { '+='  }
+  PLUSPERCENT          { '+%'  }
+  PLUSPERCENTEQUAL     { '+%=' }
+  PLUSPIPE             { '+|'  }
+  PLUSPIPEEQUAL        { '+|=' }
+  LETTERC              { 'c'   }
+  QUESTIONMARK         { '?'   }
   @precedence {
     RARROW2EQUAL,
     RARROW2, RARROWEQUAL,
     RARROW
   }
-  RARROW               { '>'   skip }
-  RARROW2              { '>>'  skip }
-  RARROW2EQUAL         { '>>=' skip }
-  RARROWEQUAL          { '>='  skip }
-  RBRACE               { '}'   skip }
-  RBRACKET             { ']'   skip }
-  RPAREN               { ')'   skip }
-  SEMICOLON            { ';'   skip }
+  RARROW               { '>'   }
+  RARROW2              { '>>'  }
+  RARROW2EQUAL         { '>>=' }
+  RARROWEQUAL          { '>='  }
+  RBRACE               { '}'   }
+  RBRACKET             { ']'   }
+  RPAREN               { ')'   }
+  SEMICOLON            { ';'   }
   @precedence {
     SLASHEQUAL,
     SLASH
   }
-  SLASH                { '/'   skip }
-  SLASHEQUAL           { '/='  skip }
-  TILDE                { '~'   skip }
+  SLASH                { '/'   }
+  SLASHEQUAL           { '/='  }
+  TILDE                { '~'   }
 }
 
 kw<word> { @specialize[@name={word}]<IDENTIFIER, word> }
 
-KEYWORD_addrspace   { kw<'addrspace'>   skip }
-KEYWORD_align       { kw<'align'>       skip }
-KEYWORD_allowzero   { kw<'allowzero'>   skip }
-KEYWORD_and         { kw<'and'>         skip }
-KEYWORD_anyframe    { kw<'anyframe'>    skip }
-KEYWORD_anytype     { kw<'anytype'>     skip }
-KEYWORD_asm         { kw<'asm'>         skip }
-KEYWORD_async       { kw<'async'>       skip }
-KEYWORD_await       { kw<'await'>       skip }
-KEYWORD_break       { kw<'break'>       skip }
-KEYWORD_callconv    { kw<'callconv'>    skip }
-KEYWORD_catch       { kw<'catch'>       skip }
-KEYWORD_comptime    { kw<'comptime'>    skip }
-KEYWORD_const       { kw<'const'>       skip }
-KEYWORD_continue    { kw<'continue'>    skip }
-KEYWORD_defer       { kw<'defer'>       skip }
-KEYWORD_else        { kw<'else'>        skip }
-KEYWORD_enum        { kw<'enum'>        skip }
-KEYWORD_errdefer    { kw<'errdefer'>    skip }
-KEYWORD_error       { kw<'error'>       skip }
-KEYWORD_export      { kw<'export'>      skip }
-KEYWORD_extern      { kw<'extern'>      skip }
-KEYWORD_fn          { kw<'fn'>          skip }
-KEYWORD_for         { kw<'for'>         skip }
-KEYWORD_if          { kw<'if'>          skip }
-KEYWORD_inline      { kw<'inline'>      skip }
-KEYWORD_noalias     { kw<'noalias'>     skip }
-KEYWORD_nosuspend   { kw<'nosuspend'>   skip }
-KEYWORD_noinline    { kw<'noinline'>    skip }
-KEYWORD_opaque      { kw<'opaque'>      skip }
-KEYWORD_or          { kw<'or'>          skip }
-KEYWORD_orelse      { kw<'orelse'>      skip }
-KEYWORD_packed      { kw<'packed'>      skip }
-KEYWORD_pub         { kw<'pub'>         skip }
-KEYWORD_resume      { kw<'resume'>      skip }
-KEYWORD_return      { kw<'return'>      skip }
-KEYWORD_linksection { kw<'linksection'> skip }
-KEYWORD_struct      { kw<'struct'>      skip }
-KEYWORD_suspend     { kw<'suspend'>     skip }
-KEYWORD_switch      { kw<'switch'>      skip }
-KEYWORD_test        { kw<'test'>        skip }
-KEYWORD_threadlocal { kw<'threadlocal'> skip }
-KEYWORD_try         { kw<'try'>         skip }
-KEYWORD_union       { kw<'union'>       skip }
-KEYWORD_unreachable { kw<'unreachable'> skip }
-KEYWORD_usingnamespace { kw<'usingnamespace'> skip }
-KEYWORD_var         { kw<'var'>         skip }
-KEYWORD_volatile    { kw<'volatile'>    skip }
-KEYWORD_while       { kw<'while'>       skip }
-
-keyword {
-  KEYWORD_addrspace | KEYWORD_align | KEYWORD_allowzero | KEYWORD_and
-  | KEYWORD_anyframe | KEYWORD_anytype | KEYWORD_asm | KEYWORD_async
-  | KEYWORD_await | KEYWORD_break | KEYWORD_callconv | KEYWORD_catch
-  | KEYWORD_comptime | KEYWORD_const | KEYWORD_continue | KEYWORD_defer
-  | KEYWORD_else | KEYWORD_enum | KEYWORD_errdefer | KEYWORD_error | KEYWORD_export
-  | KEYWORD_extern | KEYWORD_fn | KEYWORD_for | KEYWORD_if
-  | KEYWORD_inline | KEYWORD_noalias | KEYWORD_nosuspend | KEYWORD_noinline
-  | KEYWORD_opaque | KEYWORD_or | KEYWORD_orelse | KEYWORD_packed
-  | KEYWORD_pub | KEYWORD_resume | KEYWORD_return | KEYWORD_linksection
-  | KEYWORD_struct | KEYWORD_suspend | KEYWORD_switch | KEYWORD_test
-  | KEYWORD_threadlocal | KEYWORD_try | KEYWORD_union | KEYWORD_unreachable
-  | KEYWORD_usingnamespace | KEYWORD_var | KEYWORD_volatile | KEYWORD_while
-}
+KEYWORD_addrspace   { kw<'addrspace'>   }
+KEYWORD_align       { kw<'align'>       }
+KEYWORD_allowzero   { kw<'allowzero'>   }
+KEYWORD_and         { kw<'and'>         }
+KEYWORD_anyframe    { kw<'anyframe'>    }
+KEYWORD_anytype     { kw<'anytype'>     }
+KEYWORD_asm         { kw<'asm'>         }
+KEYWORD_async       { kw<'async'>       }
+KEYWORD_await       { kw<'await'>       }
+KEYWORD_break       { kw<'break'>       }
+KEYWORD_callconv    { kw<'callconv'>    }
+KEYWORD_catch       { kw<'catch'>       }
+KEYWORD_comptime    { kw<'comptime'>    }
+KEYWORD_const       { kw<'const'>       }
+KEYWORD_continue    { kw<'continue'>    }
+KEYWORD_defer       { kw<'defer'>       }
+KEYWORD_else        { kw<'else'>        }
+KEYWORD_enum        { kw<'enum'>        }
+KEYWORD_errdefer    { kw<'errdefer'>    }
+KEYWORD_error       { kw<'error'>       }
+KEYWORD_export      { kw<'export'>      }
+KEYWORD_extern      { kw<'extern'>      }
+KEYWORD_fn          { kw<'fn'>          }
+KEYWORD_for         { kw<'for'>         }
+KEYWORD_if          { kw<'if'>          }
+KEYWORD_inline      { kw<'inline'>      }
+KEYWORD_noalias     { kw<'noalias'>     }
+KEYWORD_nosuspend   { kw<'nosuspend'>   }
+KEYWORD_noinline    { kw<'noinline'>    }
+KEYWORD_opaque      { kw<'opaque'>      }
+KEYWORD_or          { kw<'or'>          }
+KEYWORD_orelse      { kw<'orelse'>      }
+KEYWORD_packed      { kw<'packed'>      }
+KEYWORD_pub         { kw<'pub'>         }
+KEYWORD_resume      { kw<'resume'>      }
+KEYWORD_return      { kw<'return'>      }
+KEYWORD_linksection { kw<'linksection'> }
+KEYWORD_struct      { kw<'struct'>      }
+KEYWORD_suspend     { kw<'suspend'>     }
+KEYWORD_switch      { kw<'switch'>      }
+KEYWORD_test        { kw<'test'>        }
+KEYWORD_threadlocal { kw<'threadlocal'> }
+KEYWORD_try         { kw<'try'>         }
+KEYWORD_union       { kw<'union'>       }
+KEYWORD_unreachable { kw<'unreachable'> }
+KEYWORD_usingnamespace { kw<'usingnamespace'> }
+KEYWORD_var         { kw<'var'>         }
+KEYWORD_volatile    { kw<'volatile'>    }
+KEYWORD_while       { kw<'while'>       }

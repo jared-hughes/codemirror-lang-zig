@@ -2,8 +2,9 @@ import { parser } from "./syntax.grammar";
 import { LRLanguage, LanguageSupport } from "@codemirror/language";
 import { styleTags, tags as t } from "@lezer/highlight";
 
-export const rubyLanguage = LRLanguage.define({
+export const zigLanguage = LRLanguage.define({
   parser: parser.configure({
+    // TODO: correct config here
     props: [
       styleTags({
         "Identifier IdentifierSuffix Constant ConstantSuffix": t.variableName,
@@ -21,6 +22,6 @@ export const rubyLanguage = LRLanguage.define({
   },
 });
 
-export function ruby() {
-  return new LanguageSupport(rubyLanguage);
+export function zig() {
+  return new LanguageSupport(zigLanguage);
 }
