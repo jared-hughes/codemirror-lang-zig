@@ -53,19 +53,21 @@ Statement {
   | KEYWORD_suspend BlockExprStatement
   | KEYWORD_defer BlockExprStatement
   | KEYWORD_errdefer Payload? BlockExprStatement
-  // | IfStatement
-  // | LabeledStatement
-  // | SwitchExpr
-  // | AssignExpr SEMICOLON
+  | IfStatement
+  | LabeledStatement
+  | SwitchExpr
+  | AssignExpr SEMICOLON
 }
 
 IfStatement {
-  IfPrefix BlockExpr ( KEYWORD_else Payload? Statement )?
+  IfPrefix BlockExpr
   | IfPrefix AssignExpr ( SEMICOLON | KEYWORD_else Payload? Statement )
 }
 
 LabeledStatement {
-  BlockLabel? (Block | LoopStatement)
+  // TODO: this doesn't allow an unlabelled block that's *not* followed by a semicolon
+  BlockLabel Block |
+  BlockLabel? LoopStatement
 }
 
 LoopStatement {
@@ -73,82 +75,75 @@ LoopStatement {
 }
 
 ForStatement {
-  ForPrefix BlockExpr ( KEYWORD_else Statement )?
+  ForPrefix BlockExpr
   | ForPrefix AssignExpr ( SEMICOLON | KEYWORD_else Statement )
 }
 
 WhileStatement {
-  WhilePrefix BlockExpr ( KEYWORD_else Payload? Statement )?
+  WhilePrefix BlockExpr
   | WhilePrefix AssignExpr ( SEMICOLON | KEYWORD_else Payload? Statement )
+}
+
+@precedence {
+  // stmt-level
+  useop,
+  extend_if_assign,
+  extend_if_block,
+  finish_stmt,
+  // expr
+  prefix,
+  multiply @left,
+  addition @left,
+  bitshift @left,
+  bitwise @left,
+  compare @left,
+  bool_and @left,
+  bool_or @left
 }
 
 BlockExprStatement {
   BlockExpr
-  | AssignExpr SEMICOLON
+  | Expr !finish_stmt SEMICOLON
 }
 
 BlockExpr {
-  BlockLabel? Block
+  BlockLabel Block
 }
 
 // *** Expression Level ***
 AssignExpr {
-  Expr (AssignOp Expr)?
+  Expr !useop (AssignOp Expr)?
 }
 
 Expr {
-  // BoolOrExpr
+  BoolOrExpr { Expr !bool_or KEYWORD_or Expr } |
+  BoolAndExpr { Expr !bool_and KEYWORD_and Expr } |
+  CompareExpr { Expr !compare CompareOp Expr } |
+  BitwiseExpr { Expr !bitwise BitwiseOp Expr } |
+  BitShiftExpr { Expr !bitshift BitShiftOp Expr } |
+  AdditionExpr { Expr !addition AdditionOp Expr } |
+  MultiplyExpr { Expr !multiply MultiplyOp Expr } |
+  PrefixExpr { !prefix PrefixOp Expr } |
   PrimaryExpr
-}
-
-BoolOrExpr {
-  BoolAndExpr (KEYWORD_or BoolAndExpr)*
-}
-
-BoolAndExpr {
-  CompareExpr (KEYWORD_and CompareExpr)*
-}
-
-CompareExpr {
-  BitwiseExpr (CompareOp BitwiseExpr)?
-}
-
-BitwiseExpr {
-  BitShiftExpr (BitwiseOp BitShiftExpr)*
-}
-
-BitShiftExpr {
-  AdditionExpr (BitShiftOp AdditionExpr)*
-}
-
-AdditionExpr {
-  MultiplyExpr (AdditionOp MultiplyExpr)*
-}
-
-MultiplyExpr {
-  PrefixExpr (MultiplyOp PrefixExpr)*
-}
-
-PrefixExpr {
-  PrefixOp* PrimaryExpr
 }
 
 PrimaryExpr {
   AsmExpr
   // | IfExpr
   // | KEYWORD_break BreakLabel? Expr?
-  | KEYWORD_comptime Expr
+  | KEYWORD_comptime !useop Expr
   | KEYWORD_nosuspend Expr
   // | KEYWORD_continue BreakLabel?
   | KEYWORD_resume Expr
   | KEYWORD_return Expr?
   // | BlockLabel? LoopExpr
-  // | Block
+  | Block
   // | CurlySuffixExpr
 }
 
 IfExpr {
-  IfPrefix Expr !expr (KEYWORD_else Payload? Expr)?
+  // TODO: negative lookahead expr before the open paren
+  IfPrefix Expr (KEYWORD_else Payload? Expr)?
 }
 
 Block {
@@ -201,7 +196,7 @@ PrimaryTypeExpr {
   | FLOAT
   | FnProto
   | GroupedExpr
-  // | LabeledTypeExpr
+  | LabeledTypeExpr
   | IDENTIFIER
   | IfTypeExpr
   | INTEGER
@@ -588,7 +583,8 @@ ExprList {
 
   @precedence {
     doc_comment, container_doc_comment,
-    line_comment
+    line_comment,
+    SLASH
   }
 
   container_doc_comment { ('//!' ![\n]* ![ \n]*)+ }
