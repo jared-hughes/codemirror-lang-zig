@@ -8,6 +8,43 @@
   space | line_comment
 }
 
+@precedence {
+  // stmt-level
+  useop,
+  extend_if_assign,
+  extend_if_block,
+  finish_stmt,
+  after_assert,
+  before_assert,
+  after_else,
+  before_else,
+  after_suffix,
+  before_suffix,
+  after_label,
+  before_label,
+  comptime_paramdecl,
+  comptime_typeexpr,
+  after_typeexpr,
+  before_typeexpr,
+  inline_loop,
+  outline_loop,
+  // expr
+  prefix,
+  multiply @left,
+  addition @left,
+  bitshift @left,
+  bitwise @left,
+  compare @left,
+  bool_and @left,
+  bool_or @left,
+  // more
+  before_break_label,
+  after_break_label,
+  expr1,
+  expr2,
+  expr3
+}
+
 // *** Top level ***
 ContainerMembers {
   ContainerDeclarations (ContainerField COMMA)* (ContainerField | ContainerDeclarations)
@@ -40,9 +77,11 @@ VarDecl {
 }
 
 ContainerField {
-  doc_comment? KEYWORD_comptime? IDENTIFIER (COLON TypeExpr)? ByteAlign? (EQUAL Expr)?
-  // TODO: why is !KEYWORD_fn before TypeExpr?
-  | doc_comment? KEYWORD_comptime? (IDENTIFIER COLON)? TypeExpr ByteAlign? (EQUAL Expr)?
+  doc_comment? KEYWORD_comptime? (
+    IDENTIFIER COLON TypeExpr
+    | IDENTIFIER
+    | !before_typeexpr TypeExpr
+  ) !after_typeexpr ByteAlign? (EQUAL Expr)?
 }
 
 // *** Block Level ***
@@ -84,23 +123,6 @@ WhileStatement {
   | WhilePrefix AssignExpr ( SEMICOLON | KEYWORD_else Payload? Statement )
 }
 
-@precedence {
-  // stmt-level
-  useop,
-  extend_if_assign,
-  extend_if_block,
-  finish_stmt,
-  // expr
-  prefix,
-  multiply @left,
-  addition @left,
-  bitshift @left,
-  bitwise @left,
-  compare @left,
-  bool_and @left,
-  bool_or @left
-}
-
 BlockExprStatement {
   BlockExpr
   | Expr !finish_stmt SEMICOLON
@@ -129,21 +151,21 @@ Expr {
 
 PrimaryExpr {
   AsmExpr
-  // | IfExpr
-  // | KEYWORD_break BreakLabel? Expr?
+  | IfExpr
+  | KEYWORD_break (!before_break_label BreakLabel)? !after_break_label Expr?
   | KEYWORD_comptime !useop Expr
   | KEYWORD_nosuspend Expr
-  // | KEYWORD_continue BreakLabel?
+  | KEYWORD_continue (!before_break_label BreakLabel)? !after_break_label
   | KEYWORD_resume Expr
   | KEYWORD_return Expr?
-  // | BlockLabel? LoopExpr
+  | BlockLabel? LoopExpr
   | Block
-  // | CurlySuffixExpr
+  // TODO:
+  // | CurlySuffixExpr { TypeExpr InitList? }
 }
 
 IfExpr {
-  // TODO: negative lookahead expr before the open paren
-  IfPrefix Expr (KEYWORD_else Payload? Expr)?
+  IfPrefix Expr (!before_else KEYWORD_else Payload? Expr)? !after_else
 }
 
 Block {
@@ -151,19 +173,16 @@ Block {
 }
 
 LoopExpr {
-  KEYWORD_inline? (ForExpr | WhileExpr)
+  KEYWORD_inline (ForExpr | WhileExpr) !inline_loop
+  | (ForExpr | WhileExpr) !outline_loop
 }
 
 ForExpr {
-  ForPrefix Expr (KEYWORD_else Expr)?
+  ForPrefix Expr (!before_else KEYWORD_else Expr)? !after_else
 }
 
 WhileExpr {
-  WhilePrefix Expr (KEYWORD_else Payload? Expr)?
-}
-
-CurlySuffixExpr {
-  TypeExpr InitList?
+  WhilePrefix Expr (!before_else KEYWORD_else Payload? Expr)? !after_else
 }
 
 InitList {
@@ -173,17 +192,12 @@ InitList {
 }
 
 TypeExpr {
-  PrefixTypeOp* ErrorUnionExpr
-}
-
-ErrorUnionExpr {
-  // SuffixExpr (EXCLAMATIONMARK TypeExpr)?
-  KEYWORD_async
+  PrefixTypeOp* SuffixExpr (!before_assert EXCLAMATIONMARK TypeExpr)? !after_assert
 }
 
 SuffixExpr {
   KEYWORD_async PrimaryTypeExpr SuffixOp* FnCallArguments
-  | PrimaryTypeExpr (SuffixOp | FnCallArguments)*
+  | PrimaryTypeExpr (!before_suffix SuffixOp | FnCallArguments)* !after_suffix
 }
 
 PrimaryTypeExpr {
@@ -200,7 +214,7 @@ PrimaryTypeExpr {
   | IDENTIFIER
   | IfTypeExpr
   | INTEGER
-  | KEYWORD_comptime TypeExpr
+  | !comptime_typeexpr KEYWORD_comptime TypeExpr
   | KEYWORD_error DOT IDENTIFIER
   | KEYWORD_anyframe
   | KEYWORD_unreachable
@@ -221,12 +235,12 @@ GroupedExpr {
 }
 
 IfTypeExpr {
-  IfPrefix TypeExpr (KEYWORD_else Payload? TypeExpr)?
+  IfPrefix TypeExpr (!before_else KEYWORD_else Payload? TypeExpr)? !after_else
 }
 
 LabeledTypeExpr {
   BlockLabel Block
-  | BlockLabel? LoopTypeExpr
+  | (!before_label BlockLabel)? !after_label LoopTypeExpr
 }
 
 LoopTypeExpr {
@@ -234,11 +248,11 @@ LoopTypeExpr {
 }
 
 ForTypeExpr {
-  ForPrefix TypeExpr (KEYWORD_else TypeExpr)?
+  ForPrefix TypeExpr (!before_else KEYWORD_else TypeExpr)? !after_else
 }
 
 WhileTypeExpr {
-  WhilePrefix TypeExpr (KEYWORD_else Payload? TypeExpr)?
+  WhilePrefix TypeExpr (!before_else KEYWORD_else Payload? TypeExpr)? !after_else
 }
 
 SwitchExpr {
@@ -301,7 +315,10 @@ CallConv {
 }
 
 ParamDecl {
-  doc_comment? (KEYWORD_noalias | KEYWORD_comptime)? (IDENTIFIER COLON)? ParamType
+  doc_comment? (
+    KEYWORD_noalias
+    | !comptime_paramdecl KEYWORD_comptime
+  )? (IDENTIFIER COLON)? ParamType
   | DOT3
 }
 
@@ -490,33 +507,15 @@ ByteAlign {
 }
 
 // Lists
-IdentifierList {
-  (doc_comment? IDENTIFIER COMMA)* (doc_comment? IDENTIFIER)?
-}
+IdentifierList { commaSep<doc_comment? IDENTIFIER> }
+SwitchProngList { commaSep<SwitchProng> }
+AsmOutputList { commaSep<AsmOutputItem> }
+AsmInputList { commaSep<AsmInputItem> }
+StringList { commaSep<STRINGLITERAL> }
+ParamDeclList { commaSep<ParamDecl> }
+ExprList { commaSep<Expr> }
 
-SwitchProngList {
-  (SwitchProng COMMA)* SwitchProng?
-}
-
-AsmOutputList {
-  (AsmOutputItem COMMA)* AsmOutputItem?
-}
-
-AsmInputList {
-  (AsmInputItem COMMA)* AsmInputItem?
-}
-
-StringList {
-  (STRINGLITERAL COMMA)* STRINGLITERAL?
-}
-
-ParamDeclList {
-  (ParamDecl COMMA)* ParamDecl?
-}
-
-ExprList {
-  (Expr COMMA)* Expr?
-}
+commaSep<e> { "" | e (COMMA e)* }
 
 @tokens {
   eof { @eof }
@@ -589,12 +588,15 @@ ExprList {
 
   container_doc_comment { ('//!' ![\n]* ![ \n]*)+ }
   doc_comment { ('///' ![\n]* $[ \n]*)+ }
-  // TODO There was a ![!/] that seems to be negative forward lookahead (by 2 bytes?) for a slash
   line_comment { '//' ![\n]* | '////' ![\n]* }
   line_string { ("\\\\" ![\n]* $[ \n]*)+ }
   space { $[ \n] }
 
   CHAR_LITERAL { "'" char_char "'" }
+  @precedence {
+    FLOAT,
+    INTEGER
+  }
   FLOAT {
     "0x" hex_int "." hex_int ($[pP] $[-+]? dec_int)?
     |      dec_int "." dec_int ($[eE] $[-+]? dec_int)?
