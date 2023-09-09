@@ -1,6 +1,6 @@
 @top Root {
   ContainerDocComment?
-  ContainerMembers
+  containerMembers
   eof
 }
 
@@ -48,34 +48,39 @@
 }
 
 // *** Top level ***
-ContainerMembers {
-  ContainerDeclarations (ContainerField ',')* (ContainerField | ContainerDeclarations)
+containerMembers {
+  containerDeclaration* (ContainerField ',')* ContainerField
+  | containerDeclaration*
+  | containerDeclaration* (ContainerField ',')+ containerDeclaration*
 }
 
-ContainerDeclarations {
-  TestDecl ContainerDeclarations
-  | ComptimeDecl ContainerDeclarations
-  | DocComment? kw<'pub'>? Decl ContainerDeclarations
+containerDeclaration {
+  TestDecl { kw<'test'> (StringLiteralSingle | Identifier)? Block }
+  | ComptimeDecl { kw<'comptime'> Block }
+  | Decl { DocComment? kw<'pub'>? decl }
 }
-TestDecl {
-  kw<'test'> (stringLiteralSingle | Identifier)? Block
-}
-ComptimeDecl {
-  kw<'comptime'> Block
-}
-
-Decl {
-  (kw<'export'> | kw<'extern'> stringLiteralSingle? | (kw<'inline'> | kw<'noinline'>))? FnProto (';' | Block)
-  | (kw<'export'> | kw<'extern'> stringLiteralSingle?)? kw<'threadlocal'>? VarDecl
-  | kw<'usingnamespace'> Expr ';'
+decl {
+  (
+    kw<'export'>
+    | kw<'extern'> StringLiteralSingle?
+    | kw<'inline'>
+    | kw<'noinline'>
+  )? FnProto (';' | Block)
+  | (
+    kw<'export'>
+    | kw<'extern'> StringLiteralSingle?
+  )? kw<'threadlocal'>? VarDecl
+  | kw<'usingnamespace'> expr ';'
 }
 
 FnProto {
-  kw<'fn'> Identifier? '(' ParamDeclList ')' ByteAlign? AddrSpace? LinkSection? CallConv? '!'? TypeExpr
+  kw<'fn'> Identifier? '(' commaSep<ParamDecl> ')'
+    ByteAlign? AddrSpace? LinkSection? CallConv? '!'? TypeExpr
 }
 
 VarDecl {
-  (kw<'const'> | kw<'var'>) Identifier (':' TypeExpr)? ByteAlign? AddrSpace? LinkSection? ('=' Expr)? ';'
+  (kw<'const'> | kw<'var'>) Identifier (':' TypeExpr)?
+    ByteAlign? AddrSpace? LinkSection? ('=' expr)? ';'
 }
 
 ContainerField {
@@ -83,7 +88,7 @@ ContainerField {
     Identifier ':' TypeExpr
     | Identifier
     | !before_typeexpr TypeExpr
-  ) !after_typeexpr ByteAlign? ('=' Expr)?
+  ) !after_typeexpr ByteAlign? ('=' expr)?
 }
 
 // *** Block Level ***
@@ -127,7 +132,7 @@ WhileStatement {
 
 BlockExprStatement {
   BlockExpr
-  | Expr !finish_stmt ';'
+  | expr !finish_stmt ';'
 }
 
 BlockExpr {
@@ -136,38 +141,42 @@ BlockExpr {
 
 // *** Expression Level ***
 AssignExpr {
-  Expr !useop (AssignOp Expr)?
+  expr !useop (AssignOp expr)?
 }
 
-Expr {
-  BoolOrExpr { Expr !bool_or kw<'or'> Expr } |
-  BoolAndExpr { Expr !bool_and kw<'and'> Expr } |
-  CompareExpr { Expr !compare CompareOp Expr } |
-  BitwiseExpr { Expr !bitwise BitwiseOp Expr } |
-  BitShiftExpr { Expr !bitshift BitShiftOp Expr } |
-  AdditionExpr { Expr !addition AdditionOp Expr } |
-  MultiplyExpr { Expr !multiply MultiplyOp Expr } |
-  PrefixExpr { !prefix PrefixOp Expr } |
-  PrimaryExpr
+expr {
+  BoolOrExpr { expr !bool_or kw<'or'> expr }
+  | BoolAndExpr { expr !bool_and kw<'and'> expr }
+  | CompareExpr { expr !compare CompareOp expr }
+  | BitwiseExpr { expr !bitwise BitwiseOp expr }
+  | BitShiftExpr { expr !bitshift BitShiftOp expr }
+  | AdditionExpr { expr !addition AdditionOp expr }
+  | MultiplyExpr { expr !multiply MultiplyOp expr }
+  | PrefixExpr { !prefix PrefixOp expr }
+  | primaryExpr
 }
 
-PrimaryExpr {
+primaryExpr {
   AsmExpr
   | IfExpr
-  | kw<'break'> (!before_break_label BreakLabel)? !after_break_label Expr?
-  | kw<'comptime'> !useop Expr
-  | kw<'nosuspend'> Expr
+  | kw<'break'> (!before_break_label BreakLabel)? !after_break_label expr?
+  | kw<'comptime'> !useop expr
+  | kw<'nosuspend'> expr
   | kw<'continue'> (!before_break_label BreakLabel)? !after_break_label
-  | kw<'resume'> Expr
-  | kw<'return'> Expr?
+  | kw<'resume'> expr
+  | kw<'return'> expr?
   | BlockLabel? LoopExpr
   | Block
   // TODO:
   // | CurlySuffixExpr { TypeExpr InitList? }
+  // Integer and following are temporary here to pass tests. CurlySuffixExpr needs to be impl'd.
+  | Integer
+  | StringLiteral
+  | BuiltinIdentifier FnCallArguments
 }
 
 IfExpr {
-  IfPrefix Expr (!before_else kw<'else'> Payload? Expr)? !after_else
+  IfPrefix expr (!before_else kw<'else'> Payload? expr)? !after_else
 }
 
 Block {
@@ -180,29 +189,29 @@ LoopExpr {
 }
 
 ForExpr {
-  ForPrefix Expr (!before_else kw<'else'> Expr)? !after_else
+  ForPrefix expr (!before_else kw<'else'> expr)? !after_else
 }
 
 WhileExpr {
-  WhilePrefix Expr (!before_else kw<'else'> Payload? Expr)? !after_else
+  WhilePrefix expr (!before_else kw<'else'> Payload? expr)? !after_else
 }
 
 InitList {
   '{' FieldInit (',' FieldInit)* ','? '}'
-  | '{' Expr (',' Expr)* ','? '}'
+  | '{' expr (',' expr)* ','? '}'
   | '{' '}'
 }
 
 TypeExpr {
-  PrefixTypeOp* SuffixExpr (!before_assert '!' TypeExpr)? !after_assert
+  PrefixTypeOp* suffixExpr (!before_assert '!' TypeExpr)? !after_assert
 }
 
-SuffixExpr {
-  kw<'async'> PrimaryTypeExpr SuffixOp* FnCallArguments
-  | PrimaryTypeExpr (!before_suffix SuffixOp | FnCallArguments)* !after_suffix
+suffixExpr {
+  kw<'async'> primaryTypeExpr SuffixOp* FnCallArguments
+  | primaryTypeExpr (!before_suffix SuffixOp | FnCallArguments)* !after_suffix
 }
 
-PrimaryTypeExpr {
+primaryTypeExpr {
   BuiltinIdentifier FnCallArguments
   | CharLiteral
   | ContainerDecl
@@ -229,11 +238,11 @@ ContainerDecl {
 }
 
 ErrorSetDecl {
-  kw<'error'> '{' IdentifierList '}'
+  kw<'error'> '{' commaSep<DocComment? Identifier> '}'
 }
 
 GroupedExpr {
-  '(' Expr ')'
+  '(' expr ')'
 }
 
 IfTypeExpr {
@@ -258,16 +267,16 @@ WhileTypeExpr {
 }
 
 SwitchExpr {
-  kw<'switch'> '(' Expr ')' '{' SwitchProngList '}'
+  kw<'switch'> '(' expr ')' '{' commaSep<SwitchProng> '}'
 }
 
 // *** Assembly ***
 AsmExpr {
-  kw<'asm'> kw<'volatile'>? '(' Expr AsmOutput? ')'
+  kw<'asm'> kw<'volatile'>? '(' expr AsmOutput? ')'
 }
 
 AsmOutput {
-  ':' AsmOutputList AsmInput?
+  ':' commaSep<AsmOutputItem> AsmInput?
 }
 
 AsmOutputItem {
@@ -275,15 +284,15 @@ AsmOutputItem {
 }
 
 AsmInput {
-  ':' AsmInputList AsmClobbers?
+  ':' commaSep<AsmInputItem> AsmClobbers?
 }
 
 AsmInputItem {
-  '[' Identifier ']' StringLiteral '(' Expr ')'
+  '[' Identifier ']' StringLiteral '(' expr ')'
 }
 
 AsmClobbers {
-  ':' StringList
+  ':' commaSep<StringLiteral>
 }
 
 // *** Helper grammar ***
@@ -296,7 +305,7 @@ BlockLabel {
 }
 
 FieldInit {
-  '.' Identifier '=' Expr
+  '.' Identifier '=' expr
 }
 
 WhileContinueExpr {
@@ -304,38 +313,36 @@ WhileContinueExpr {
 }
 
 LinkSection {
-  kw<'linksection'> '(' Expr ')'
+  kw<'linksection'> '(' expr ')'
 }
 
 AddrSpace {
-  kw<'addrspace'> '(' Expr ')'
+  kw<'addrspace'> '(' expr ')'
 }
 
 // Fn specific
 CallConv {
-  kw<'callconv'> '(' Expr ')'
+  kw<'callconv'> '(' expr ')'
 }
 
 ParamDecl {
-  DocComment? (
-    kw<'noalias'>
-    | !comptime_paramdecl kw<'comptime'>
-  )? (Identifier ':')? ParamType
+  DocComment?
+    (
+      kw<'noalias'>
+      | !comptime_paramdecl kw<'comptime'>
+    )?
+    (Identifier ':')? 
+    (kw<'anytype'> | TypeExpr)
   | '...'
-}
-
-ParamType {
-  kw<'anytype'>
-  | TypeExpr
 }
 
 // Control flow prefixes
 IfPrefix {
-  kw<'if'> '(' Expr ')' PtrPayload?
+  kw<'if'> '(' expr ')' PtrPayload?
 }
 
 WhilePrefix {
-  kw<'while'> '(' Expr ')' PtrPayload? WhileContinueExpr?
+  kw<'while'> '(' expr ')' PtrPayload? WhileContinueExpr?
 }
 
 ForPrefix {
@@ -370,7 +377,7 @@ SwitchCase {
 }
 
 SwitchItem {
-  Expr ('...' Expr)?
+  expr ('...' expr)?
 }
 
 // For specific
@@ -379,7 +386,7 @@ ForArgumentsList {
 }
 
 ForItem {
-  Expr ('..' Expr?)?
+  expr ('..' expr?)?
 }
 
 // Operators
@@ -461,61 +468,50 @@ PrefixTypeOp {
   '?'
   | kw<'anyframe'> '->'
   | SliceTypeStart (ByteAlign | AddrSpace | kw<'const'> | kw<'volatile'> | kw<'allowzero'>)*
-  | PtrTypeStart (AddrSpace | kw<'align'> '(' Expr (':' Expr ':' Expr)? ')' | kw<'const'> | kw<'volatile'> | kw<'allowzero'>)*
+  | PtrTypeStart (AddrSpace | kw<'align'> '(' expr (':' expr ':' expr)? ')' | kw<'const'> | kw<'volatile'> | kw<'allowzero'>)*
   | ArrayTypeStart
 }
 
 SuffixOp {
-  '[' Expr ('..' (Expr? (':' Expr)?)?)? ']'
+  '[' expr ('..' (expr? (':' expr)?)?)? ']'
   | '.' Identifier
   | '.*'
   | '.?'
 }
 
 FnCallArguments {
-  '(' ExprList ')'
+  '(' commaSep<expr> ')'
 }
 
 //  Ptr specific
 SliceTypeStart {
-  '[' (':' Expr)? ']'
+  '[' (':' expr)? ']'
 }
 
 PtrTypeStart {
   '*'
   | '**'
-  | '[' '*' ('c' | ':' Expr)? ']'
+  | '[' '*' ('c' | ':' expr)? ']'
 }
 
 ArrayTypeStart {
-  '[' Expr (':' Expr)? ']'
+  '[' expr (':' expr)? ']'
 }
 
 // ContainerDecl specific
 ContainerDeclAuto {
-  ContainerDeclType '{' ContainerDocComment? ContainerMembers '}'
+  ContainerDeclType '{' ContainerDocComment? containerMembers '}'
 }
 
 ContainerDeclType {
-  kw<'struct'> ('(' Expr ')')?
+  kw<'struct'> ('(' expr ')')?
   | kw<'opaque'>
-  | kw<'enum'> ('(' Expr ')')?
-  | kw<'union'> ('(' (kw<'enum'> ('(' Expr ')')? | Expr) ')')?
+  | kw<'enum'> ('(' expr ')')?
+  | kw<'union'> ('(' (kw<'enum'> ('(' expr ')')? | expr) ')')?
 }
 
 // Alignment
-ByteAlign {
-  kw<'align'> '(' Expr ')'
-}
-
-// Lists
-IdentifierList { commaSep<DocComment? Identifier> }
-SwitchProngList { commaSep<SwitchProng> }
-AsmOutputList { commaSep<AsmOutputItem> }
-AsmInputList { commaSep<AsmInputItem> }
-StringList { commaSep<StringLiteral> }
-ParamDeclList { commaSep<ParamDecl> }
-ExprList { commaSep<Expr> }
+ByteAlign { kw<'align'> '(' expr ')' }
 
 commaSep<e> { "" | e (',' e)* }
 
@@ -579,7 +575,7 @@ commaSep<e> { "" | e (',' e)* }
 
   string_char {
     char_escape
-    | $[^\\"\n]
+    | ![\\"\n]
   }
 
   @precedence {
@@ -588,7 +584,7 @@ commaSep<e> { "" | e (',' e)* }
     '/'
   }
 
-  ContainerDocComment { ('//!' ![\n]* ![ \n]*)+ }
+  ContainerDocComment { ('//!' ![\n]* $[ \n]*)+ }
   DocComment { ('///' ![\n]* $[ \n]*)+ }
   LineComment { '//' ![\n]* | '////' ![\n]* }
   LineString { ("\\\\" ![\n]* $[ \n]*)+ }
@@ -612,6 +608,7 @@ commaSep<e> { "" | e (',' e)* }
     |      dec_int
   }
   stringLiteralSingle { "\"" string_char* "\"" }
+  StringLiteralSingle[@name=StringLiteral] { stringLiteralSingle }
   StringLiteral {
     stringLiteralSingle
       | (LineString   )+
@@ -660,8 +657,7 @@ commaSep<e> { "" | e (',' e)* }
     '<<', '<=',
     '<'
   }
-  '<' '<<' '<<=' '<<|' '<<|=' '<=' '{' '['   
-  '('   
+  '<' '<<' '<<=' '<<|' '<<|=' '<=' '{' '[' '('   
   @precedence {
     '-%=', '-|='
     '-=', '-%', '->', '-|',

@@ -1,0 +1,104 @@
+# container doc comment
+
+//! comment line 1
+//! comment line 2
+comptime { }
+
+==>
+
+Root(
+    ContainerDocComment,
+    ComptimeDecl(comptime, Block)
+)
+
+
+
+
+# two members
+
+comptime { }
+comptime { }
+
+==>
+
+Root(
+    ComptimeDecl(comptime, Block),
+    ComptimeDecl(comptime, Block)
+)
+
+
+
+
+
+
+# test with empty name
+
+test { }
+
+==>
+
+Root(
+    TestDecl(
+        test,
+        Block
+    )
+)
+
+# test with string name
+
+test "abc" { }
+
+==>
+
+Root(
+    TestDecl(
+        test,
+        StringLiteral,
+        Block
+    )
+)
+
+# test with id name
+
+test idname { }
+
+==>
+
+Root(
+    TestDecl(
+        test,
+        Identifier,
+        Block
+    )
+)
+
+
+
+
+
+# comptime block
+
+comptime { }
+
+==>
+
+Root(
+    ComptimeDecl(comptime, Block)
+)
+
+
+
+
+
+# usingnamespace decl
+
+usingnamespace @import("std");
+
+==>
+
+Root(Decl(
+    usingnamespace,
+    BuiltinIdentifier, FnCallArguments(
+        StringLiteral
+    )
+))

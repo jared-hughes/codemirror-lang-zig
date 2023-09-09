@@ -1,0 +1,172 @@
+# fn proto
+
+fn abc() void;
+
+==>
+
+Root(Decl(FnProto(
+    fn, Identifier,
+    TypeExpr(Identifier)
+)))
+
+# fn proto no id
+
+fn () void;
+
+==>
+
+Root(Decl(FnProto(
+    fn,
+    TypeExpr(Identifier)
+)))
+
+# fn proto with params
+
+fn abc(a, b: u32) void;
+
+==>
+
+Root(Decl(FnProto(
+    fn, Identifier,
+    ParamDecl(TypeExpr(Identifier)),
+    ParamDecl(Identifier, ":", TypeExpr(Identifier)),
+    TypeExpr(Identifier)
+)))
+
+# fn proto block
+
+fn abc() void {}
+
+==>
+
+Root(Decl(
+    FnProto(fn, Identifier, TypeExpr(Identifier)),
+    Block
+))
+
+# DocComment fn proto
+
+/// doc comment line 1
+/// doc comment line 2
+fn abc() void;
+
+==>
+
+Root(Decl(DocComment, FnProto(
+    fn, Identifier,
+    TypeExpr(Identifier)
+)))
+
+# pub fn proto
+
+pub fn abc() void;
+
+==>
+
+Root(Decl(pub, FnProto(
+    fn, Identifier,
+    TypeExpr(Identifier)
+)))
+
+# export fn proto
+
+export fn abc() void;
+
+==>
+
+Root(Decl(export, FnProto(
+    fn, Identifier,
+    TypeExpr(Identifier)
+)))
+
+# extern fn proto
+
+extern fn abc() void;
+
+==>
+
+Root(Decl(extern, FnProto(
+    fn, Identifier,
+    TypeExpr(Identifier)
+)))
+
+# extern fn proto custom name
+
+extern "abcFrFr" fn abc() void;
+
+==>
+
+Root(Decl(extern, StringLiteral, FnProto(
+    fn, Identifier,
+    TypeExpr(Identifier)
+)))
+
+# inline fn proto
+
+inline fn abc() void;
+
+==>
+
+Root(Decl(inline, FnProto(
+    fn, Identifier,
+    TypeExpr(Identifier)
+)))
+
+# noinline fn proto
+
+noinline fn abc() void;
+
+==>
+
+Root(Decl(noinline, FnProto(
+    fn, Identifier,
+    TypeExpr(Identifier)
+)))
+
+# fn proto align
+
+fn abc() align(5) void;
+
+==>
+
+Root(Decl(FnProto(
+    fn, Identifier,
+    ByteAlign(align, Integer),
+    TypeExpr(Identifier)
+)))
+
+# fn proto addrspace
+
+fn abc() addrspace(5) void;
+
+==>
+
+Root(Decl(FnProto(
+    fn, Identifier,
+    AddrSpace(addrspace, Integer),
+    TypeExpr(Identifier)
+)))
+
+# fn proto linksection
+
+fn abc() linksection(5) void;
+
+==>
+
+Root(Decl(FnProto(
+    fn, Identifier,
+    LinkSection(linksection, Integer),
+    TypeExpr(Identifier)
+)))
+
+# fn proto callconv
+
+fn abc() callconv(5) void;
+
+==>
+
+Root(Decl(FnProto(
+    fn, Identifier,
+    CallConv(callconv, Integer),
+    TypeExpr(Identifier)
+)))

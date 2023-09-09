@@ -1,0 +1,125 @@
+# vardecl
+
+var x;
+
+==>
+
+Root(Decl(
+    VarDecl(var,Identifier)
+))
+
+# export vardecl
+
+export var x;
+
+==>
+
+Root(Decl(
+    export,
+    VarDecl(var,Identifier)
+))
+
+# extern vardecl
+
+extern var x;
+
+==>
+
+Root(Decl(
+    extern,
+    VarDecl(var,Identifier)
+))
+
+# extern vardecl custom name
+
+extern "xFr" var x;
+
+==>
+
+Root(Decl(
+    extern,
+    StringLiteral,
+    VarDecl(var,Identifier)
+))
+
+# threadlocal vardecl
+
+threadlocal var x;
+
+==>
+
+Root(Decl(
+    threadlocal,
+    VarDecl(var,Identifier)
+))
+
+# pub vardecl
+
+pub var x;
+
+==>
+
+Root(Decl(
+    pub,
+    VarDecl(var,Identifier)
+))
+
+# const vardecl
+
+const x;
+
+==>
+
+Root(Decl(
+    VarDecl(const,Identifier)
+))
+
+# vardecl type annotation
+
+var x: u64;
+
+==>
+
+Root(Decl(
+    VarDecl(var,Identifier,":",TypeExpr(Identifier))
+))
+
+# vardecl align
+
+var x align(5);
+
+==>
+
+Root(Decl(
+    VarDecl(var,Identifier,ByteAlign(align,Integer))
+))
+
+# vardecl addrspace
+
+var x addrspace(5);
+
+==>
+
+Root(Decl(
+    VarDecl(var,Identifier,AddrSpace(addrspace,Integer))
+))
+
+# vardecl linksection
+
+var x linksection(5);
+
+==>
+
+Root(Decl(
+    VarDecl(var,Identifier,LinkSection(linksection,Integer))
+))
+
+# vardecl with assignment
+
+var x = 7;
+
+==>
+
+Root(Decl(
+    VarDecl(var,Identifier,"=",Integer)
+))
