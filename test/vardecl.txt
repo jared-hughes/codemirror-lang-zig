@@ -76,7 +76,7 @@ var x: u64;
 ==>
 
 Root(Decl(
-    VarDecl(var,Identifier,":",TypeExpr(Identifier))
+    VarDecl(var,Identifier,":",Identifier)
 ))
 
 # vardecl align

@@ -34,7 +34,7 @@ Root(TestDecl(test,Block(
   AsmExpr(
     asm, volatile, StringLiteral,
     AsmOutput(
-      AsmOutputItem(Identifier, StringLiteral, "->", TypeExpr(Identifier)),
+      AsmOutputItem(Identifier, StringLiteral, "->", Identifier),
     ),
     AsmInput(
       AsmInputItem(Identifier, StringLiteral, Identifier),

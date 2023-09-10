@@ -42,11 +42,16 @@
   bool_and @left,
   bool_or @left,
   // more
-  before_break_label,
-  after_break_label,
   expr1,
   expr2,
-  expr3
+  expr3,
+  assign_stmt,
+  switch_stmt,
+  ident_primary,
+  ptr_type_start,
+  before_break_label,
+  after_break_label,
+  block_label
 }
 
 // *** Top level ***
@@ -79,19 +84,19 @@ decl {
 
 FnProto {
   kw<'fn'> Identifier? '(' commaSep<ParamDecl> ')'
-    ByteAlign? AddrSpace? LinkSection? CallConv? '!'? TypeExpr
+    ByteAlign? AddrSpace? LinkSection? CallConv? '!'? typeExpr
 }
 
 varDecl {
-  (kw<'const'> | kw<'var'>) Identifier (':' TypeExpr)?
+  (kw<'const'> | kw<'var'>) Identifier (':' typeExpr)?
     ByteAlign? AddrSpace? LinkSection? ('=' expr)? ';'
 }
 
 ContainerField {
   DocComment? kw<'comptime'>? (
-    Identifier ':' TypeExpr
+    Identifier ':' typeExpr
     | Identifier
-    | !before_typeexpr TypeExpr
+    | !before_typeexpr typeExpr
   ) !after_typeexpr ByteAlign? ('=' expr)?
 }
 
@@ -114,8 +119,8 @@ statement {
       BlockLabel Block |
       BlockLabel? loopStatement
     }
-  | SwitchExpr
-  | assignExpr ';'
+  | SwitchExpr !switch_stmt
+  | assignExpr !assign_stmt ';'
 }
 
 loopStatement {
@@ -165,14 +170,7 @@ primaryExpr {
   | ReturnExpr { kw<'return'> expr? }
   | BlockLabel? LoopExpr
   | !primary_expr_block Block
-  // TODO:
-  // | CurlySuffixExpr { TypeExpr InitList? }
-  // Integer and following are temporary here to pass tests. CurlySuffixExpr needs to be impl'd.
-  | Integer
-  | StringLiteral
-  | !expr2 Identifier
-  | BuiltinIdentifier FnCallArguments
-  | Identifier FnCallArguments
+  | typeExpr InitList?
 }
 
 IfExpr {
@@ -202,8 +200,8 @@ InitList {
   | '{' '}'
 }
 
-TypeExpr {
-  PrefixTypeOp* suffixExpr (!before_assert '!' TypeExpr)? !after_assert
+typeExpr {
+  PrefixTypeOp* suffixExpr (!before_assert '!' typeExpr)? !after_assert
 }
 
 suffixExpr {
@@ -221,11 +219,11 @@ primaryTypeExpr {
   | Float
   | FnProto
   | GroupedExpr
-  | LabeledTypeExpr
-  | Identifier
-  | IfTypeExpr
+  // | LabeledTypeExpr
+  | !ident_primary Identifier
+  // | IfTypeExpr
   | Integer
-  | !comptime_typeexpr kw<'comptime'> TypeExpr
+  | ComptimeExpr { !comptime_typeexpr kw<'comptime'> typeExpr }
   | kw<'error'> '.' Identifier
   | kw<'anyframe'>
   | kw<'unreachable'>
@@ -246,7 +244,7 @@ GroupedExpr {
 }
 
 IfTypeExpr {
-  ifPrefix TypeExpr (!before_else kw<'else'> Payload? TypeExpr)? !after_else
+  ifPrefix typeExpr (!before_else kw<'else'> Payload? typeExpr)? !after_else
 }
 
 LabeledTypeExpr {
@@ -259,11 +257,11 @@ LoopTypeExpr {
 }
 
 ForTypeExpr {
-  forPrefix TypeExpr (!before_else kw<'else'> TypeExpr)? !after_else
+  forPrefix typeExpr (!before_else kw<'else'> typeExpr)? !after_else
 }
 
 WhileTypeExpr {
-  whilePrefix TypeExpr (!before_else kw<'else'> Payload? TypeExpr)? !after_else
+  whilePrefix typeExpr (!before_else kw<'else'> Payload? typeExpr)? !after_else
 }
 
 SwitchExpr {
@@ -282,7 +280,7 @@ AsmExpr {
 }
 
 AsmOutputItem {
-  '[' Identifier ']' StringLiteral '(' ('->' TypeExpr | Identifier) ')'
+  '[' Identifier ']' StringLiteral '(' ('->' typeExpr | Identifier) ')'
 }
 
 AsmInputItem {
@@ -295,7 +293,7 @@ BreakLabel {
 }
 
 BlockLabel {
-  !expr1  Identifier ':'
+  !block_label Identifier ':'
 }
 
 FieldInit {
@@ -326,7 +324,7 @@ ParamDecl {
       | !comptime_paramdecl kw<'comptime'>
     )?
     (Identifier ':')?
-    (kw<'anytype'> | TypeExpr)
+    (kw<'anytype'> | typeExpr)
   | '...'
 }
 
@@ -418,7 +416,7 @@ PrefixTypeOp {
   '?'
   | kw<'anyframe'> '->'
   | SliceTypeStart (ByteAlign | AddrSpace | kw<'const'> | kw<'volatile'> | kw<'allowzero'>)*
-  | PtrTypeStart (AddrSpace | kw<'align'> '(' expr (':' expr ':' expr)? ')' | kw<'const'> | kw<'volatile'> | kw<'allowzero'>)*
+  | !ptr_type_start PtrTypeStart (AddrSpace | kw<'align'> '(' expr (':' expr ':' expr)? ')' | kw<'const'> | kw<'volatile'> | kw<'allowzero'>)*
   | ArrayTypeStart
 }
 
@@ -629,6 +627,10 @@ commaSep<e> { "" | e (',' e)* ','? }
     '+%=', '+|=',
     '++', '+=', '+%', '+|',
     '+'
+  }
+  @precedence {
+    Identifier,
+    'c'
   }
   '+' '++' '+=' '+%' '+%=' '+|' '+|=' 'c' '?'
   @precedence {
