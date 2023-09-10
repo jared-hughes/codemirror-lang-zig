@@ -219,8 +219,10 @@ primaryTypeExpr {
   | Float
   | FnProto
   | GroupedExpr
+  // TODO:
   // | LabeledTypeExpr
   | !ident_primary Identifier
+  // TODO:
   // | IfTypeExpr
   | Integer
   | ComptimeExpr { !comptime_typeexpr kw<'comptime'> typeExpr }
@@ -343,20 +345,23 @@ forPrefix {
 
 // Payloads
 Payload {
-  '|' Identifier '|'
+  OpenPipe Identifier ClosePipe
 }
 
 PtrPayload {
-  '|' '*'? Identifier '|'
+  OpenPipe '*'? Identifier ClosePipe
 }
 
 PtrIndexPayload {
-  '|' '*'? Identifier (',' Identifier)? '|'
+  OpenPipe '*'? Identifier (',' Identifier)? ClosePipe
 }
 
 PtrListPayload {
-  '|' '*'? Identifier (',' '*'? Identifier)* ','? '|'
+  OpenPipe '*'? Identifier (',' '*'? Identifier)* ','? ClosePipe
 }
+
+OpenPipe[closedBy=ClosePipe] { '|' }
+ClosePipe[openedBy=OpenPipe] { '|' }
 
 // Switch specific
 SwitchProng {
@@ -482,7 +487,7 @@ commaSep<e> { "" | e (',' e)* ','? }
   hex_int { hex hex_* }
   dec_int { dec dec_* }
 
-  // TODO: lezer operates on chars not bytes
+  // TODO: lezer operates on chars not bytes?
   ox80_oxBF { $[\u0080-\u00bf] }
   oxF4 { '\u00f4' }
   ox80_ox8F { $[\u0080-\u008f] }

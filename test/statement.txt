@@ -113,7 +113,7 @@ test {
 ==>
 
 Root(TestDecl(test,Block(
-  BlockExprStatement(errdefer,Payload(Identifier),Block(
+  BlockExprStatement(errdefer,Payload(OpenPipe,Identifier,ClosePipe),Block(
     AssignExpr(Identifier, "=", Integer)
   ))
 )))
@@ -207,7 +207,7 @@ Root(TestDecl(test,Block(
       AssignExpr(Identifier, "=", Integer)
     ),
     else,
-    Payload(Identifier),
+    Payload(OpenPipe,Identifier,ClosePipe),
     Block(
       AssignExpr(Identifier, "=", Integer)
     )

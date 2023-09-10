@@ -63,7 +63,10 @@ Root(TestDecl(test,Block(
   BitwiseExpr(Identifier, "|", Identifier),
   BitwiseExpr(Identifier, orelse, Identifier),
   BitwiseExpr(Identifier, catch, Identifier),
-  BitwiseExpr(Identifier, catch, Payload(Identifier), Identifier),
+  BitwiseExpr(Identifier, catch,
+    Payload(OpenPipe, Identifier, ClosePipe),
+    Identifier
+  ),
 )))
 
 # BitShiftExpr

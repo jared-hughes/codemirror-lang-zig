@@ -14,10 +14,7 @@ Root(TestDecl(test,Block(
       ForItem(Identifier),
       ForItem(Integer, ".."),
       ForItem(Integer, "..", Integer),
-      PtrListPayload(
-        Identifier,
-        Identifier
-      ),
+      PtrListPayload(OpenPipe,Identifier,Identifier,ClosePipe),
       Block
     )
   )
@@ -37,7 +34,7 @@ Root(TestDecl(test,Block(
     ForStatement(
       for,
       ForItem(Identifier),
-      PtrListPayload(Identifier),
+      PtrListPayload(OpenPipe,Identifier,ClosePipe),
       AssignExpr(Identifier,"=",Identifier)
     )
   )
@@ -57,7 +54,7 @@ Root(TestDecl(test,Block(
     ForStatement(
       for,
       ForItem(Identifier),
-      PtrListPayload(Identifier),
+      PtrListPayload(OpenPipe,Identifier,ClosePipe),
       AssignExpr(Identifier,"=",Identifier),
       else,
       Block
@@ -96,7 +93,7 @@ Root(TestDecl(test,Block(
     WhileStatement(
       while,
       CompareExpr(Identifier, ">=", Integer),
-      PtrPayload("*", Identifier),
+      PtrPayload(OpenPipe,"*", Identifier,ClosePipe),
       Block
     )
   )
@@ -175,7 +172,7 @@ Root(TestDecl(test,Block(
       CompareExpr(Identifier, ">=", Integer),
       AssignExpr(Identifier, "=", Integer),
       else,
-      Payload(Identifier),
+      Payload(OpenPipe,Identifier,ClosePipe),
       Block
     )
   )
@@ -259,12 +256,12 @@ Root(TestDecl(test,Block(
       SwitchItem(Integer),
       SwitchItem(Integer),
       SwitchItem(Integer),
-      PtrIndexPayload(Identifier),
+      PtrIndexPayload(OpenPipe,Identifier,ClosePipe),
       Identifier
     ),
     SwitchProng(
       else,
-      PtrIndexPayload("*",Identifier,Identifier),
+      PtrIndexPayload(OpenPipe,"*",Identifier,Identifier,ClosePipe),
       Identifier
     ),
   )

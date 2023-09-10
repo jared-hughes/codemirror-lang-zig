@@ -13,11 +13,10 @@ const kws = kwsString.split(" ");
 
 export const zigLanguage = LRLanguage.define({
   parser: parser.configure({
-    // TODO: correct config here
     props: [
       styleTags({
         Identifier: t.variableName,
-        kwsString: t.keyword,
+        [kwsString]: t.keyword,
         BuiltinIdentifier: t.standard(t.variableName),
         StringLiteral: t.string,
         Float: t.float,
@@ -26,6 +25,7 @@ export const zigLanguage = LRLanguage.define({
         "( )": t.paren,
         "[ ]": t.squareBracket,
         "{ }": t.brace,
+        "OpenPipe ClosePipe": t.bracket,
         "DocComment ContainerDocComment LineComment": t.comment,
       }),
     ],

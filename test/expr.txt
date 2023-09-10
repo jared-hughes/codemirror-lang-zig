@@ -191,7 +191,7 @@ test {
 Root(TestDecl(test,Block(AssignExpr(Identifier, "=",
   LoopExpr(inline, for,
     ForItem(Identifier),
-    PtrListPayload(Identifier),
+    PtrListPayload(OpenPipe,Identifier,ClosePipe),
     Block,
     else,
     Integer
@@ -211,7 +211,7 @@ Root(TestDecl(test,Block(AssignExpr(Identifier, "=",
     Identifier,
     Block,
     else,
-    Payload(Identifier),
+    Payload(OpenPipe,Identifier,ClosePipe),
     Identifier
   )
 ))))
