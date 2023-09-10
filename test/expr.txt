@@ -1,0 +1,231 @@
+# AsmExpr
+
+test {
+  asm (
+    \\.global my_func;
+    \\.type my_func, @function;
+    \\my_func:
+    \\  lea (%rdi,%rsi,1),%eax
+    \\  retq
+  );
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  AsmExpr(asm, StringLiteral)
+)))
+
+# AsmExpr volatile : output : input : clobbers
+
+test {
+  asm volatile (
+    "syscall"
+      : [ret] "={rax}" (-> usize),
+      : [number] "{rax}" (number),
+        [arg1] "{rdi}" (arg1),
+      : "rcx", "r11"
+  );
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  AsmExpr(
+    asm, volatile, StringLiteral,
+    AsmOutput(
+      AsmOutputItem(Identifier, StringLiteral, "->", TypeExpr(Identifier)),
+    ),
+    AsmInput(
+      AsmInputItem(Identifier, StringLiteral, Identifier),
+      AsmInputItem(Identifier, StringLiteral, Identifier),
+    ),
+    AsmClobbers(StringLiteral, StringLiteral),
+  )
+)))
+
+# IfExpr
+
+test {
+  y = if (x > 5) x;
+}
+
+==>
+Root(TestDecl(test,Block(
+  AssignExpr(
+    Identifier, "=",
+    IfExpr(if,
+      CompareExpr(Identifier, Integer),
+      Identifier
+    )
+  )
+)))
+
+# IfExpr else
+
+test {
+  y = if (x > 5) x else 7;
+}
+
+==>
+Root(TestDecl(test,Block(AssignExpr(Identifier, "=",
+  IfExpr(if,
+    CompareExpr(Identifier, Integer),
+    Identifier,
+    else,
+    Integer
+  )
+))))
+
+# BreakExpr
+
+test {
+  break;
+}
+
+==>
+Root(TestDecl(test,Block(
+  BreakExpr(break)
+)))
+
+# BreakExpr label
+
+test {
+  break :abc;
+}
+
+==>
+Root(TestDecl(test,Block(
+  BreakExpr(break, BreakLabel(":", Identifier))
+)))
+
+# BreakExpr label value
+
+test {
+  break :abc sum;
+}
+
+==>
+Root(TestDecl(test,Block(
+  BreakExpr(break, BreakLabel(":", Identifier), Identifier)
+)))
+
+# ContinueExpr
+
+test {
+  continue;
+}
+
+==>
+Root(TestDecl(test,Block(
+  ContinueExpr(continue)
+)))
+
+# ContinueExpr label
+
+test {
+  continue :abc;
+}
+
+==>
+Root(TestDecl(test,Block(
+  ContinueExpr(continue, BreakLabel(":", Identifier))
+)))
+
+# ComptimeExpr
+
+test {
+  y = comptime x;
+}
+
+==>
+
+Root(TestDecl(test,Block(AssignExpr(Identifier, "=",
+  ComptimeExpr(comptime, Identifier)
+))))
+
+# NosuspendExpr
+
+test {
+  y = nosuspend x;
+}
+
+==>
+
+Root(TestDecl(test,Block(AssignExpr(Identifier, "=",
+  NosuspendExpr(nosuspend, Identifier)
+))))
+
+# ResumeExpr
+
+test {
+  y = resume x;
+}
+
+==>
+
+Root(TestDecl(test,Block(AssignExpr(Identifier, "=",
+  ResumeExpr(resume, Identifier)
+))))
+
+# ReturnExpr
+
+test {
+  y = return x;
+}
+
+==>
+
+Root(TestDecl(test,Block(AssignExpr(Identifier, "=",
+  ReturnExpr(return, Identifier)
+))))
+
+# LoopExpr: for
+
+test {
+  y = inline for (x) |i| {} else 5;
+}
+
+==>
+
+Root(TestDecl(test,Block(AssignExpr(Identifier, "=",
+  LoopExpr(inline, for,
+    ForItem(Identifier),
+    PtrListPayload(Identifier),
+    Block,
+    else,
+    Integer
+  )
+))))
+
+# LoopExpr: while
+
+test {
+  y = while (x) {} else |err| err;
+}
+
+==>
+
+Root(TestDecl(test,Block(AssignExpr(Identifier, "=",
+  LoopExpr(while,
+    Identifier,
+    Block,
+    else,
+    Payload(Identifier),
+    Identifier
+  )
+))))
+
+# Block expr
+
+test {
+  y = {
+    5;
+  };
+}
+
+==>
+
+Root(TestDecl(test,Block(AssignExpr(Identifier, "=",
+  Block(Integer)
+))))

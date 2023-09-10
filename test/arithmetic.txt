@@ -1,0 +1,262 @@
+# BoolOrExpr
+
+test {
+  a or b;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  BoolOrExpr(Identifier, or, Identifier)
+)))
+
+# BoolAndExpr
+
+test {
+  a and b;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  BoolAndExpr(Identifier, and, Identifier)
+)))
+
+# CompareExpr
+
+test {
+  a == b;
+  a != b;
+  a < b;
+  a > b;
+  a <= b;
+  a >= b;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  CompareExpr(Identifier, "==", Identifier),
+  CompareExpr(Identifier, "!=", Identifier),
+  CompareExpr(Identifier, "<", Identifier),
+  CompareExpr(Identifier, ">", Identifier),
+  CompareExpr(Identifier, "<=", Identifier),
+  CompareExpr(Identifier, ">=", Identifier),
+)))
+
+# BitwiseExpr
+
+test {
+  a & b;
+  a ^ b;
+  a | b;
+  a orelse b;
+  a catch b;
+  a catch |x| b;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  BitwiseExpr(Identifier, "&", Identifier),
+  BitwiseExpr(Identifier, "^", Identifier),
+  BitwiseExpr(Identifier, "|", Identifier),
+  BitwiseExpr(Identifier, orelse, Identifier),
+  BitwiseExpr(Identifier, catch, Identifier),
+  BitwiseExpr(Identifier, catch, Payload(Identifier), Identifier),
+)))
+
+# BitShiftExpr
+
+test {
+  a << b;
+  a >> b;
+  a <<| b;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  BitShiftExpr(Identifier, "<<", Identifier),
+  BitShiftExpr(Identifier, ">>", Identifier),
+  BitShiftExpr(Identifier, "<<|", Identifier),
+)))
+
+# AdditionExpr
+
+test {
+  a + b;
+  a - b;
+  a ++ b;
+  a +% b;
+  a -% b;
+  a +| b;
+  a -| b;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  AdditionExpr(Identifier, "+", Identifier),
+  AdditionExpr(Identifier, "-", Identifier),
+  AdditionExpr(Identifier, "++", Identifier),
+  AdditionExpr(Identifier, "+%", Identifier),
+  AdditionExpr(Identifier, "-%", Identifier),
+  AdditionExpr(Identifier, "+|", Identifier),
+  AdditionExpr(Identifier, "-|", Identifier),
+)))
+
+# MultiplyExpr
+
+test {
+  a || b;
+  a * b;
+  a / b;
+  a % b;
+  a ** b;
+  a *% b;
+  a *| b;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  MultiplyExpr(Identifier, "||", Identifier),
+  MultiplyExpr(Identifier, "*", Identifier),
+  MultiplyExpr(Identifier, "/", Identifier),
+  MultiplyExpr(Identifier, "%", Identifier),
+  MultiplyExpr(Identifier, "**", Identifier),
+  MultiplyExpr(Identifier, "*%", Identifier),
+  MultiplyExpr(Identifier, "*|", Identifier),
+)))
+
+# PrefixExpr
+
+test {
+  !x;
+  -x;
+  ~x;
+  -%x;
+  &x;
+  try x;
+  await x;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  PrefixExpr("!", Identifier),
+  PrefixExpr("-", Identifier),
+  PrefixExpr("~", Identifier),
+  PrefixExpr("-%", Identifier),
+  PrefixExpr("&", Identifier),
+  PrefixExpr("try", Identifier),
+  PrefixExpr("await", Identifier),
+)))
+
+# or and
+
+test {
+  a or b or c;
+  a and b or c;
+  a or b and c;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  BoolOrExpr(BoolOrExpr(Identifier, or, Identifier), or, Identifier),
+  BoolOrExpr(BoolAndExpr(Identifier, and, Identifier), or, Identifier),
+  BoolOrExpr(Identifier, or, BoolAndExpr(Identifier, and, Identifier))
+)))
+
+# and compare
+
+test {
+  a and b and c;
+  a >= b and c;
+  a and b >= c;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  BoolAndExpr(BoolAndExpr(Identifier, and, Identifier), and, Identifier),
+  BoolAndExpr(CompareExpr(Identifier, Identifier), and, Identifier),
+  BoolAndExpr(Identifier, and, CompareExpr(Identifier, Identifier)),
+)))
+
+# compare bitwise
+
+test {
+  a >= b == c;
+  a & b == c;
+  a == b & c;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  CompareExpr(CompareExpr(Identifier, Identifier), Identifier),
+  CompareExpr(BitwiseExpr(Identifier, Identifier), Identifier),
+  CompareExpr(Identifier, BitwiseExpr(Identifier, Identifier)),
+)))
+
+
+# bitwise bitshift
+
+test {
+  a & b | c;
+  a | b & c;
+  a << b | c;
+  a | b << c;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  BitwiseExpr(BitwiseExpr(Identifier, Identifier), Identifier),
+  BitwiseExpr(BitwiseExpr(Identifier, Identifier), Identifier),
+  BitwiseExpr(BitShiftExpr(Identifier, Identifier), Identifier),
+  BitwiseExpr(Identifier, BitShiftExpr(Identifier, Identifier)),
+)))
+
+
+
+# bitshift addition
+
+test {
+  a << b << c;
+  a + b << c;
+  a << b + c;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  BitShiftExpr(BitShiftExpr(Identifier, Identifier), Identifier),
+  BitShiftExpr(AdditionExpr(Identifier, Identifier), Identifier),
+  BitShiftExpr(Identifier, AdditionExpr(Identifier, Identifier)),
+)))
+
+# addition mul, prefix
+
+test {
+  a + b + c;
+  a * b + c;
+  a + b * c;
+
+  a * b * c;
+  ~a * b;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  AdditionExpr(AdditionExpr(Identifier, Identifier), Identifier),
+  AdditionExpr(MultiplyExpr(Identifier, Identifier), Identifier),
+  AdditionExpr(Identifier, MultiplyExpr(Identifier, Identifier)),
+
+  MultiplyExpr(MultiplyExpr(Identifier, Identifier), Identifier),
+  MultiplyExpr(PrefixExpr(Identifier), Identifier),
+)))

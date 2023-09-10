@@ -201,16 +201,16 @@ test {
 ==>
 
 Root(TestDecl(test,Block(
-  IfStatement(if,
+  IfExpr(if,
     CompareExpr(Identifier, "==", Integer),
-    AssignExpr(Block(
+    Block(
       AssignExpr(Identifier, "=", Integer)
-    )),
+    ),
     else,
     Payload(Identifier),
-    AssignExpr(Block(
+    Block(
       AssignExpr(Identifier, "=", Integer)
-    ))
+    )
   )
 )))
 

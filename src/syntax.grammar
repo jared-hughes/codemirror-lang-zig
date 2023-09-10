@@ -107,7 +107,7 @@ statement {
     }
   | IfStatement {
       ifPrefix blockExpr
-      | ifPrefix AssignExpr ( ';' | kw<'else'> Payload? statement )
+      | ifPrefix assignExpr ( ';' | kw<'else'> Payload? statement )
     }
   | LabeledStatement {
       // TODO: this doesn't allow an unlabelled block that's *not* followed by a semicolon
@@ -115,7 +115,7 @@ statement {
       BlockLabel? loopStatement
     }
   | SwitchExpr
-  | AssignExpr ';'
+  | assignExpr ';'
 }
 
 loopStatement {
@@ -124,12 +124,12 @@ loopStatement {
 
 ForStatement {
   forPrefix blockExpr
-  | forPrefix AssignExpr ( ';' | kw<'else'> statement )
+  | forPrefix assignExpr ( ';' | kw<'else'> statement )
 }
 
 WhileStatement {
   whilePrefix blockExpr
-  | whilePrefix AssignExpr ( ';' | kw<'else'> Payload? statement )
+  | whilePrefix assignExpr ( ';' | kw<'else'> Payload? statement )
 }
 
 blockExpr {
@@ -137,8 +137,9 @@ blockExpr {
 }
 
 // *** Expression Level ***
-AssignExpr {
-  expr !useop (assignOp expr)?
+assignExpr {
+  AssignExpr { expr !useop assignOp expr }
+  | expr
 }
 
 expr {
@@ -156,12 +157,12 @@ expr {
 primaryExpr {
   AsmExpr
   | IfExpr
-  | kw<'break'> (!before_break_label BreakLabel)? !after_break_label expr?
-  | kw<'comptime'> !useop expr
-  | kw<'nosuspend'> expr
-  | kw<'continue'> (!before_break_label BreakLabel)? !after_break_label
-  | kw<'resume'> expr
-  | kw<'return'> expr?
+  | BreakExpr { kw<'break'> (!before_break_label BreakLabel)? !after_break_label expr? }
+  | ContinueExpr { kw<'continue'> (!before_break_label BreakLabel)? !after_break_label }
+  | ComptimeExpr { kw<'comptime'> !useop expr }
+  | NosuspendExpr { kw<'nosuspend'> expr }
+  | ResumeExpr { kw<'resume'> expr }
+  | ReturnExpr { kw<'return'> expr? }
   | BlockLabel? LoopExpr
   | !primary_expr_block Block
   // TODO:
@@ -183,15 +184,15 @@ Block {
 }
 
 LoopExpr {
-  kw<'inline'> (ForExpr | WhileExpr) !inline_loop
-  | (ForExpr | WhileExpr) !outline_loop
+  kw<'inline'> (forExpr | whileExpr) !inline_loop
+  | (forExpr | whileExpr) !outline_loop
 }
 
-ForExpr {
+forExpr {
   forPrefix expr (!before_else kw<'else'> expr)? !after_else
 }
 
-WhileExpr {
+whileExpr {
   whilePrefix expr (!before_else kw<'else'> Payload? expr)? !after_else
 }
 
@@ -271,27 +272,21 @@ SwitchExpr {
 
 // *** Assembly ***
 AsmExpr {
-  kw<'asm'> kw<'volatile'>? '(' expr AsmOutput? ')'
-}
-
-AsmOutput {
-  ':' commaSep<AsmOutputItem> AsmInput?
+  kw<'asm'> kw<'volatile'>? '(' expr
+    (AsmOutput{ ':' commaSep<AsmOutputItem> }
+      (AsmInput { ':' commaSep<AsmInputItem> }
+        (AsmClobbers { ':' commaSep<StringLiteral> })?
+      )?
+    )?
+  ')'
 }
 
 AsmOutputItem {
   '[' Identifier ']' StringLiteral '(' ('->' TypeExpr | Identifier) ')'
 }
 
-AsmInput {
-  ':' commaSep<AsmInputItem> AsmClobbers?
-}
-
 AsmInputItem {
   '[' Identifier ']' StringLiteral '(' expr ')'
-}
-
-AsmClobbers {
-  ':' commaSep<StringLiteral>
 }
 
 // *** Helper grammar ***
@@ -308,7 +303,7 @@ FieldInit {
 }
 
 WhileContinueExpr {
-  ':' '(' AssignExpr ')'
+  ':' '(' assignExpr ')'
 }
 
 LinkSection {
@@ -330,7 +325,7 @@ ParamDecl {
       kw<'noalias'>
       | !comptime_paramdecl kw<'comptime'>
     )?
-    (Identifier ':')? 
+    (Identifier ':')?
     (kw<'anytype'> | TypeExpr)
   | '...'
 }
@@ -367,7 +362,7 @@ PtrListPayload {
 
 // Switch specific
 SwitchProng {
-  kw<'inline'>? switchCase '=>' PtrIndexPayload? AssignExpr
+  kw<'inline'>? switchCase '=>' PtrIndexPayload? assignExpr
 }
 
 switchCase {
@@ -390,77 +385,33 @@ ForItem {
 
 // Operators
 assignOp {
-  '*='
-  | '*|='
-  | '/='
-  | '%='
-  | '+='
-  | '+|='
-  | '-='
-  | '-|='
-  | '<<='
-  | '<<|='
-  | '>>='
-  | '&='
-  | '^='
-  | '|='
-  | '*%='
-  | '+%='
-  | '-%='
-  | '='
+  '*=' | '*|=' | '/=' | '%=' | '+=' | '+|=' | '-=' | '-|=' | '<<='
+  | '<<|=' | '>>=' | '&=' | '^=' | '|=' | '*%=' | '+%=' | '-%=' | '='
 }
 
 compareOp {
-  '=='
-  | '!='
-  | '<'
-  | '>'
-  | '<='
-  | '>='
+  '==' | '!=' | '<' | '>' | '<=' | '>='
 }
 
 bitwiseOp {
-  '&'
-  | '^'
-  | '|'
-  | kw<'orelse'>
+  '&' | '^' | '|' | kw<'orelse'>
   | kw<'catch'> Payload?
 }
 
 bitShiftOp {
-  '<<'
-  | '>>'
-  | '<<|'
+  '<<' | '>>' | '<<|'
 }
 
 additionOp {
-  '+'
-  | '-'
-  | '++'
-  | '+%'
-  | '-%'
-  | '+|'
-  | '-|'
+  '+' | '-' | '++' | '+%' | '-%' | '+|' | '-|'
 }
 
 multiplyOp {
-  '||'
-  | '*'
-  | '/'
-  | '%'
-  | '**'
-  | '*%'
-  | '*|'
+  '||' | '*' | '/' | '%' | '**' | '*%' | '*|'
 }
 
 prefixOp {
-  '!'
-  | '-'
-  | '~'
-  | '-%'
-  | '&'
-  | kw<'try'>
-  | kw<'await'>
+  '!' | '-' | '~' | '-%' | '&' | kw<'try'> | kw<'await'>
 }
 
 PrefixTypeOp {
@@ -513,7 +464,7 @@ ContainerDeclType {
 // Alignment
 ByteAlign { kw<'align'> '(' expr ')' }
 
-commaSep<e> { "" | e (',' e)* }
+commaSep<e> { "" | e (',' e)* ','? }
 
 @tokens {
   eof { @eof }
@@ -657,18 +608,18 @@ commaSep<e> { "" | e (',' e)* }
     '<<', '<=',
     '<'
   }
-  '<' '<<' '<<=' '<<|' '<<|=' '<=' '{' '[' '('   
+  '<' '<<' '<<=' '<<|' '<<|=' '<=' '{' '[' '('
   @precedence {
     '-%=', '-|='
     '-=', '-%', '->', '-|',
     '-'
   }
-  '-' '-=' '-%' '-%=' '-|' '-|=' '->'  
+  '-' '-=' '-%' '-%=' '-|' '-|=' '->'
   @precedence {
     '%=',
     '%'
   }
-  '%' '%=' 
+  '%' '%='
   @precedence {
     '||', '|=',
     '|'
@@ -679,18 +630,18 @@ commaSep<e> { "" | e (',' e)* }
     '++', '+=', '+%', '+|',
     '+'
   }
-  '+' '++' '+=' '+%' '+%=' '+|' '+|=' 'c' '?'    
+  '+' '++' '+=' '+%' '+%=' '+|' '+|=' 'c' '?'
   @precedence {
     '>>=',
     '>>', '>=',
     '>'
   }
-  '>' '>>' '>>=' '>=' '}'  ']'  ')' ';'    
+  '>' '>>' '>>=' '>=' '}'  ']'  ')' ';'
   @precedence {
     '/=',
     '/'
   }
-  '/' '/=' '~'    
+  '/' '/=' '~'
 }
 
 kw<word> { @specialize[@name={word}]<Identifier, word> }

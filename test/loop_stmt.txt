@@ -1,4 +1,3 @@
-
 # labelled for
 
 test {
@@ -39,11 +38,7 @@ Root(TestDecl(test,Block(
       for,
       ForItem(Identifier),
       PtrListPayload(Identifier),
-      AssignExpr(
-        Identifier,
-        "=",
-        Identifier
-      )
+      AssignExpr(Identifier,"=",Identifier)
     )
   )
 )))
@@ -65,7 +60,7 @@ Root(TestDecl(test,Block(
       PtrListPayload(Identifier),
       AssignExpr(Identifier,"=",Identifier),
       else,
-      AssignExpr(Block())
+      Block
     )
   )
 )))
@@ -83,6 +78,44 @@ Root(TestDecl(test,Block(
     WhileStatement(
       while,
       CompareExpr(Identifier, ">=", Integer),
+      Block
+    )
+  )
+)))
+
+# while payload
+
+test {
+  while (a >= 0) |*x| {}
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  LabeledStatement(
+    WhileStatement(
+      while,
+      CompareExpr(Identifier, ">=", Integer),
+      PtrPayload("*", Identifier),
+      Block
+    )
+  )
+)))
+
+# while continue expr
+
+test {
+  while (a >= 0) : (a -= 1) {}
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  LabeledStatement(
+    WhileStatement(
+      while,
+      CompareExpr(Identifier, ">=", Integer),
+      WhileContinueExpr(AssignExpr(Identifier, "-=", Integer)),
       Block
     )
   )
@@ -122,7 +155,7 @@ Root(TestDecl(test,Block(
       CompareExpr(Identifier, ">=", Integer),
       AssignExpr(Identifier, "=", Integer),
       else,
-      AssignExpr(Block)
+      Block
     )
   )
 )))
@@ -143,7 +176,7 @@ Root(TestDecl(test,Block(
       AssignExpr(Identifier, "=", Integer),
       else,
       Payload(Identifier),
-      AssignExpr(Block)
+      Block
     )
   )
 )))
@@ -185,7 +218,7 @@ Root(TestDecl(test,Block(
     switch, Identifier,
     SwitchProng(
       SwitchItem(Integer),
-      AssignExpr(Integer)
+      Integer
     )
   )
 )))
@@ -211,28 +244,28 @@ Root(TestDecl(test,Block(
     SwitchProng(
       inline,
       SwitchItem(Integer),
-      AssignExpr(Integer)
+      Integer
     ),
     SwitchProng(
       SwitchItem(Integer, Integer),
-      AssignExpr(Integer)
+      Integer
     ),
     SwitchProng(
       SwitchItem(Integer),
       SwitchItem(Integer),
-      AssignExpr(Integer)
+      Integer
     ),
     SwitchProng(
       SwitchItem(Integer),
       SwitchItem(Integer),
       SwitchItem(Integer),
       PtrIndexPayload(Identifier),
-      AssignExpr(Identifier)
+      Identifier
     ),
     SwitchProng(
       else,
       PtrIndexPayload("*",Identifier,Identifier),
-      AssignExpr(Identifier)
+      Identifier
     ),
   )
 )))
