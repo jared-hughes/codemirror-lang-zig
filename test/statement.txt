@@ -1,0 +1,246 @@
+# vardecl
+
+test {
+  var x;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  VarDecl(var,Identifier)
+)))
+
+# comptime vardecl
+
+test {
+  comptime var x;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  VarDecl(comptime,var,Identifier)
+)))
+
+# comptime block expr
+
+test {
+  comptime {
+    x = 5;
+  }
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  BlockExprStatement(comptime,Block(
+    AssignExpr(Identifier, "=", Integer)
+  ))
+)))
+
+# nosuspend block expr
+
+test {
+  nosuspend {
+    x = 5;
+  }
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  BlockExprStatement(nosuspend,Block(
+    AssignExpr(Identifier, "=", Integer)
+  ))
+)))
+
+# suspend block expr
+
+test {
+  suspend {
+    x = 5;
+  }
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  BlockExprStatement(suspend,Block(
+    AssignExpr(Identifier, "=", Integer)
+  ))
+)))
+
+# defer block expr
+
+test {
+  defer {
+    x = 5;
+  }
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  BlockExprStatement(defer,Block(
+    AssignExpr(Identifier, "=", Integer)
+  ))
+)))
+
+# errdefer block expr
+
+test {
+  errdefer {
+    x = 5;
+  }
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  BlockExprStatement(errdefer,Block(
+    AssignExpr(Identifier, "=", Integer)
+  ))
+)))
+
+# errdefer block expr with payload
+
+test {
+  errdefer |err| {
+    x = 5;
+  }
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  BlockExprStatement(errdefer,Payload(Identifier),Block(
+    AssignExpr(Identifier, "=", Integer)
+  ))
+)))
+
+# errdefer plain expr
+
+test {
+  errdefer f(x);
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  BlockExprStatement(errdefer,
+    Identifier, FnCallArguments(Identifier)
+  ))
+))
+
+
+
+
+# if statement
+
+test {
+  if (x == 5) {
+    x = 6;
+  }
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  IfStatement(if,
+    CompareExpr(Identifier, "==", Integer),
+    Block(AssignExpr(Identifier, "=", Integer))
+  )
+)))
+
+# if statement with assign expr
+
+test {
+  if (x == 5)
+    x = 6;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  IfStatement(if,
+    CompareExpr(Identifier, "==", Integer),
+    AssignExpr(Identifier, "=", Integer)
+  )
+)))
+
+# if statement with assign expr and else
+
+test {
+  if (x == 5)
+    x = 6
+  else
+    x = 7;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  IfStatement(if,
+    CompareExpr(Identifier, "==", Integer),
+    AssignExpr(Identifier, "=", Integer),
+    else
+    AssignExpr(Identifier, "=", Integer),
+  )
+)))
+
+# if statement with block and else payload
+
+test {
+  if (x == 5) {
+    x = 6;
+  } else |err| {
+    x = 7;
+  };
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  IfStatement(if,
+    CompareExpr(Identifier, "==", Integer),
+    AssignExpr(Block(
+      AssignExpr(Identifier, "=", Integer)
+    )),
+    else,
+    Payload(Identifier),
+    AssignExpr(Block(
+      AssignExpr(Identifier, "=", Integer)
+    ))
+  )
+)))
+
+# labelled block
+
+test {
+  label: {
+    x = 6;
+  }
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  LabeledStatement(
+    BlockLabel(Identifier),
+    Block(
+      AssignExpr(Identifier, "=", Integer)
+    )
+  )
+)))
+
+# assign expr
+
+test {
+  x = 5;
+}
+
+==>
+
+Root(TestDecl(test,Block(
+  AssignExpr(Identifier, "=", Integer)
+)))

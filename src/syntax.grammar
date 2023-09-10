@@ -30,6 +30,8 @@
   before_typeexpr,
   inline_loop,
   outline_loop,
+  block_expr_block,
+  primary_expr_block,
   // expr
   prefix,
   multiply @left,
@@ -66,10 +68,12 @@ decl {
     | kw<'inline'>
     | kw<'noinline'>
   )? FnProto (';' | Block)
-  | (
-    kw<'export'>
-    | kw<'extern'> StringLiteralSingle?
-  )? kw<'threadlocal'>? VarDecl
+  | VarDecl {
+    (
+      kw<'export'>
+      | kw<'extern'> StringLiteralSingle?
+    )? kw<'threadlocal'>? varDecl
+  }
   | kw<'usingnamespace'> expr ';'
 }
 
@@ -78,7 +82,7 @@ FnProto {
     ByteAlign? AddrSpace? LinkSection? CallConv? '!'? TypeExpr
 }
 
-VarDecl {
+varDecl {
   (kw<'const'> | kw<'var'>) Identifier (':' TypeExpr)?
     ByteAlign? AddrSpace? LinkSection? ('=' expr)? ';'
 }
@@ -92,67 +96,60 @@ ContainerField {
 }
 
 // *** Block Level ***
-Statement {
-  kw<'comptime'>? VarDecl
-  | kw<'comptime'> BlockExprStatement
-  | kw<'nosuspend'> BlockExprStatement
-  | kw<'suspend'> BlockExprStatement
-  | kw<'defer'> BlockExprStatement
-  | kw<'errdefer'> Payload? BlockExprStatement
-  | IfStatement
-  | LabeledStatement
+statement {
+  VarDecl { kw<'comptime'>? varDecl }
+  | BlockExprStatement {
+      (
+        kw<'comptime'> | kw<'nosuspend'> | kw<'suspend'> | kw<'defer'>
+        | kw<'errdefer'> Payload?
+      )
+      (blockExpr | expr !finish_stmt ';')
+    }
+  | IfStatement {
+      ifPrefix blockExpr
+      | ifPrefix AssignExpr ( ';' | kw<'else'> Payload? statement )
+    }
+  | LabeledStatement {
+      // TODO: this doesn't allow an unlabelled block that's *not* followed by a semicolon
+      BlockLabel Block |
+      BlockLabel? loopStatement
+    }
   | SwitchExpr
   | AssignExpr ';'
 }
 
-IfStatement {
-  IfPrefix BlockExpr
-  | IfPrefix AssignExpr ( ';' | kw<'else'> Payload? Statement )
-}
-
-LabeledStatement {
-  // TODO: this doesn't allow an unlabelled block that's *not* followed by a semicolon
-  BlockLabel Block |
-  BlockLabel? LoopStatement
-}
-
-LoopStatement {
+loopStatement {
   kw<'inline'>? (ForStatement | WhileStatement)
 }
 
 ForStatement {
-  ForPrefix BlockExpr
-  | ForPrefix AssignExpr ( ';' | kw<'else'> Statement )
+  forPrefix blockExpr
+  | forPrefix AssignExpr ( ';' | kw<'else'> statement )
 }
 
 WhileStatement {
-  WhilePrefix BlockExpr
-  | WhilePrefix AssignExpr ( ';' | kw<'else'> Payload? Statement )
+  whilePrefix blockExpr
+  | whilePrefix AssignExpr ( ';' | kw<'else'> Payload? statement )
 }
 
-BlockExprStatement {
-  BlockExpr
-  | expr !finish_stmt ';'
-}
-
-BlockExpr {
-  BlockLabel Block
+blockExpr {
+  BlockLabel? !block_expr_block Block
 }
 
 // *** Expression Level ***
 AssignExpr {
-  expr !useop (AssignOp expr)?
+  expr !useop (assignOp expr)?
 }
 
 expr {
   BoolOrExpr { expr !bool_or kw<'or'> expr }
   | BoolAndExpr { expr !bool_and kw<'and'> expr }
-  | CompareExpr { expr !compare CompareOp expr }
-  | BitwiseExpr { expr !bitwise BitwiseOp expr }
-  | BitShiftExpr { expr !bitshift BitShiftOp expr }
-  | AdditionExpr { expr !addition AdditionOp expr }
-  | MultiplyExpr { expr !multiply MultiplyOp expr }
-  | PrefixExpr { !prefix PrefixOp expr }
+  | CompareExpr { expr !compare compareOp expr }
+  | BitwiseExpr { expr !bitwise bitwiseOp expr }
+  | BitShiftExpr { expr !bitshift bitShiftOp expr }
+  | AdditionExpr { expr !addition additionOp expr }
+  | MultiplyExpr { expr !multiply multiplyOp expr }
+  | PrefixExpr { !prefix prefixOp expr }
   | primaryExpr
 }
 
@@ -166,21 +163,23 @@ primaryExpr {
   | kw<'resume'> expr
   | kw<'return'> expr?
   | BlockLabel? LoopExpr
-  | Block
+  | !primary_expr_block Block
   // TODO:
   // | CurlySuffixExpr { TypeExpr InitList? }
   // Integer and following are temporary here to pass tests. CurlySuffixExpr needs to be impl'd.
   | Integer
   | StringLiteral
+  | !expr2 Identifier
   | BuiltinIdentifier FnCallArguments
+  | Identifier FnCallArguments
 }
 
 IfExpr {
-  IfPrefix expr (!before_else kw<'else'> Payload? expr)? !after_else
+  ifPrefix expr (!before_else kw<'else'> Payload? expr)? !after_else
 }
 
 Block {
-  '{' Statement* '}'
+  '{' statement* '}'
 }
 
 LoopExpr {
@@ -189,11 +188,11 @@ LoopExpr {
 }
 
 ForExpr {
-  ForPrefix expr (!before_else kw<'else'> expr)? !after_else
+  forPrefix expr (!before_else kw<'else'> expr)? !after_else
 }
 
 WhileExpr {
-  WhilePrefix expr (!before_else kw<'else'> Payload? expr)? !after_else
+  whilePrefix expr (!before_else kw<'else'> Payload? expr)? !after_else
 }
 
 InitList {
@@ -207,8 +206,8 @@ TypeExpr {
 }
 
 suffixExpr {
-  kw<'async'> primaryTypeExpr SuffixOp* FnCallArguments
-  | primaryTypeExpr (!before_suffix SuffixOp | FnCallArguments)* !after_suffix
+  kw<'async'> primaryTypeExpr suffixOp* FnCallArguments
+  | primaryTypeExpr (!before_suffix suffixOp | FnCallArguments)* !after_suffix
 }
 
 primaryTypeExpr {
@@ -246,7 +245,7 @@ GroupedExpr {
 }
 
 IfTypeExpr {
-  IfPrefix TypeExpr (!before_else kw<'else'> Payload? TypeExpr)? !after_else
+  ifPrefix TypeExpr (!before_else kw<'else'> Payload? TypeExpr)? !after_else
 }
 
 LabeledTypeExpr {
@@ -259,11 +258,11 @@ LoopTypeExpr {
 }
 
 ForTypeExpr {
-  ForPrefix TypeExpr (!before_else kw<'else'> TypeExpr)? !after_else
+  forPrefix TypeExpr (!before_else kw<'else'> TypeExpr)? !after_else
 }
 
 WhileTypeExpr {
-  WhilePrefix TypeExpr (!before_else kw<'else'> Payload? TypeExpr)? !after_else
+  whilePrefix TypeExpr (!before_else kw<'else'> Payload? TypeExpr)? !after_else
 }
 
 SwitchExpr {
@@ -301,7 +300,7 @@ BreakLabel {
 }
 
 BlockLabel {
-  Identifier ':'
+  !expr1  Identifier ':'
 }
 
 FieldInit {
@@ -337,16 +336,16 @@ ParamDecl {
 }
 
 // Control flow prefixes
-IfPrefix {
+ifPrefix {
   kw<'if'> '(' expr ')' PtrPayload?
 }
 
-WhilePrefix {
+whilePrefix {
   kw<'while'> '(' expr ')' PtrPayload? WhileContinueExpr?
 }
 
-ForPrefix {
-  kw<'for'> '(' ForArgumentsList ')' PtrListPayload
+forPrefix {
+  kw<'for'> '(' forArgumentsList ')' PtrListPayload
 }
 
 // Payloads
@@ -368,10 +367,10 @@ PtrListPayload {
 
 // Switch specific
 SwitchProng {
-  kw<'inline'>? SwitchCase '=>' PtrIndexPayload? AssignExpr
+  kw<'inline'>? switchCase '=>' PtrIndexPayload? AssignExpr
 }
 
-SwitchCase {
+switchCase {
   SwitchItem (',' SwitchItem)* ','?
   | kw<'else'>
 }
@@ -381,7 +380,7 @@ SwitchItem {
 }
 
 // For specific
-ForArgumentsList {
+forArgumentsList {
   ForItem (',' ForItem)* ','?
 }
 
@@ -390,7 +389,7 @@ ForItem {
 }
 
 // Operators
-AssignOp {
+assignOp {
   '*='
   | '*|='
   | '/='
@@ -411,7 +410,7 @@ AssignOp {
   | '='
 }
 
-CompareOp {
+compareOp {
   '=='
   | '!='
   | '<'
@@ -420,7 +419,7 @@ CompareOp {
   | '>='
 }
 
-BitwiseOp {
+bitwiseOp {
   '&'
   | '^'
   | '|'
@@ -428,13 +427,13 @@ BitwiseOp {
   | kw<'catch'> Payload?
 }
 
-BitShiftOp {
+bitShiftOp {
   '<<'
   | '>>'
   | '<<|'
 }
 
-AdditionOp {
+additionOp {
   '+'
   | '-'
   | '++'
@@ -444,7 +443,7 @@ AdditionOp {
   | '-|'
 }
 
-MultiplyOp {
+multiplyOp {
   '||'
   | '*'
   | '/'
@@ -454,7 +453,7 @@ MultiplyOp {
   | '*|'
 }
 
-PrefixOp {
+prefixOp {
   '!'
   | '-'
   | '~'
@@ -472,8 +471,9 @@ PrefixTypeOp {
   | ArrayTypeStart
 }
 
-SuffixOp {
-  '[' expr ('..' (expr? (':' expr)?)?)? ']'
+suffixOp {
+  // TODO: good name
+  SomethingInBracketsIdk { '[' expr ('..' (expr? (':' expr)?)?)? ']' }
   | '.' Identifier
   | '.*'
   | '.?'

@@ -15,8 +15,7 @@ export var x;
 ==>
 
 Root(Decl(
-    export,
-    VarDecl(var,Identifier)
+    VarDecl(export, var,Identifier)
 ))
 
 # extern vardecl
@@ -26,8 +25,7 @@ extern var x;
 ==>
 
 Root(Decl(
-    extern,
-    VarDecl(var,Identifier)
+    VarDecl(extern, var,Identifier)
 ))
 
 # extern vardecl custom name
@@ -37,9 +35,7 @@ extern "xFr" var x;
 ==>
 
 Root(Decl(
-    extern,
-    StringLiteral,
-    VarDecl(var,Identifier)
+    VarDecl(extern StringLiteral, var,Identifier)
 ))
 
 # threadlocal vardecl
@@ -49,8 +45,7 @@ threadlocal var x;
 ==>
 
 Root(Decl(
-    threadlocal,
-    VarDecl(var,Identifier)
+    VarDecl(threadlocal,var,Identifier)
 ))
 
 # pub vardecl
